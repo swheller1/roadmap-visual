@@ -102,7 +102,7 @@ interface RowData {
 
 // Constants
 const TYPES = ['Epic', 'Milestone', 'Feature'];
-const VISUAL_VERSION = '1.0.0.0';
+const VISUAL_VERSION = '1.0.1.0';
 
 // Row heights for different density levels
 const ROW_HEIGHTS: { [density: string]: { [type: string]: number } } = {
