@@ -160,13 +160,17 @@
     flex-direction: column;
 }
 
+.timeline-header-wrapper {
+    flex-shrink: 0;
+    overflow: hidden;
+    background: @header;
+    border-bottom: 1px solid @border;
+}
+
 .timeline-header {
     height: 36px;
     position: relative;
     background: @header;
-    border-bottom: 1px solid @border;
-    flex-shrink: 0;
-    overflow: hidden;
 }
 
 .month-cell {

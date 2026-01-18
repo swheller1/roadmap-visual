@@ -318,12 +318,14 @@ export class RoadmapVisual implements IVisual {
 
         // Timeline panel
         const timeline = main.append("div").classed("timeline-panel", true);
-        const timelineHeader = timeline.append("div").classed("timeline-header", true).style("width", `${timelineWidth}px`);
+        const timelineHeaderWrapper = timeline.append("div").classed("timeline-header-wrapper", true);
+        const timelineHeader = timelineHeaderWrapper.append("div").classed("timeline-header", true).style("width", `${timelineWidth}px`);
         const timelineBody = timeline.append("div").classed("timeline-body", true);
 
         // In PDF mode, show all content without scroll
         if (this.settings.pdfMode) {
             timelineBody.style("overflow", "visible").style("height", "auto");
+            timelineHeaderWrapper.style("overflow", "visible");
         }
 
         const timelineInner = timelineBody.append("div").classed("timeline-inner", true)
@@ -344,9 +346,13 @@ export class RoadmapVisual implements IVisual {
         if (!this.settings.pdfMode) {
             const leftBodyNode = leftBody.node();
             const timelineBodyNode = timelineBody.node();
-            if (leftBodyNode && timelineBodyNode) {
+            const timelineHeaderWrapperNode = timelineHeaderWrapper.node();
+            if (leftBodyNode && timelineBodyNode && timelineHeaderWrapperNode) {
                 leftBody.on("scroll", () => { timelineBodyNode.scrollTop = leftBodyNode.scrollTop; });
-                timelineBody.on("scroll", () => { leftBodyNode.scrollTop = timelineBodyNode.scrollTop; });
+                timelineBody.on("scroll", () => {
+                    leftBodyNode.scrollTop = timelineBodyNode.scrollTop;
+                    timelineHeaderWrapperNode.scrollLeft = timelineBodyNode.scrollLeft;
+                });
             }
         }
     }
