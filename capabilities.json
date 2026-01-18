@@ -40,19 +40,25 @@
       "name": "parentId",
       "displayName": "Parent ID",
       "kind": "Grouping",
-      "description": "Parent work item ID for hierarchy"
+      "description": "Parent work item ID for hierarchy (e.g., Epic ID for Features)"
+    },
+    {
+      "name": "predecessorId",
+      "displayName": "Predecessor ID",
+      "kind": "Grouping",
+      "description": "ID of predecessor work item for dependency lines"
     },
     {
       "name": "areaPath",
-      "displayName": "Area Path",
+      "displayName": "Area Path / Scheme",
       "kind": "Grouping",
-      "description": "Area path for swimlane grouping"
+      "description": "Area path or scheme for grouping (e.g., Program, Portfolio)"
     },
     {
       "name": "iterationPath",
       "displayName": "Iteration Path",
       "kind": "Grouping",
-      "description": "Iteration path for swimlane grouping"
+      "description": "Iteration path for grouping"
     },
     {
       "name": "assignedTo",
@@ -84,6 +90,7 @@
           "startDate": { "max": 1 },
           "targetDate": { "max": 1 },
           "parentId": { "max": 1 },
+          "predecessorId": { "max": 1 },
           "areaPath": { "max": 1 },
           "iterationPath": { "max": 1 },
           "assignedTo": { "max": 1 },
@@ -101,6 +108,7 @@
             { "for": { "in": "startDate" } },
             { "for": { "in": "targetDate" } },
             { "for": { "in": "parentId" } },
+            { "for": { "in": "predecessorId" } },
             { "for": { "in": "areaPath" } },
             { "for": { "in": "iterationPath" } },
             { "for": { "in": "assignedTo" } },
@@ -115,8 +123,55 @@
     }
   ],
   "objects": {
+    "display": {
+      "displayName": "Display",
+      "description": "Control how the roadmap is displayed",
+      "properties": {
+        "viewScale": {
+          "displayName": "View Scale",
+          "description": "Timeline granularity",
+          "type": {
+            "enumeration": [
+              { "value": "daily", "displayName": "Day" },
+              { "value": "weekly", "displayName": "Week" },
+              { "value": "monthly", "displayName": "Month" },
+              { "value": "annual", "displayName": "Year" },
+              { "value": "multiYear", "displayName": "Multi Year" }
+            ]
+          }
+        },
+        "rowDensity": {
+          "displayName": "Row Density",
+          "description": "Row height for fitting more data",
+          "type": {
+            "enumeration": [
+              { "value": "compact", "displayName": "Compact" },
+              { "value": "normal", "displayName": "Normal" },
+              { "value": "comfortable", "displayName": "Comfortable" }
+            ]
+          }
+        },
+        "zoomLevel": {
+          "displayName": "Zoom",
+          "description": "Timeline zoom level",
+          "type": {
+            "enumeration": [
+              { "value": "0.5", "displayName": "50%" },
+              { "value": "1", "displayName": "100%" },
+              { "value": "2", "displayName": "200%" },
+              { "value": "4", "displayName": "400%" }
+            ]
+          }
+        },
+        "enableDragPan": {
+          "displayName": "Drag to Pan",
+          "description": "Click and drag to pan the timeline view",
+          "type": { "bool": true }
+        }
+      }
+    },
     "general": {
-      "displayName": "General",
+      "displayName": "Title & Subtitle",
       "properties": {
         "title": {
           "displayName": "Title",
@@ -128,19 +183,87 @@
         }
       }
     },
-    "swimlanes": {
-      "displayName": "Swimlanes",
+    "logo": {
+      "displayName": "Logo",
+      "description": "Add a logo to the top left of the roadmap",
       "properties": {
-        "show": {
-          "displayName": "Show Swimlanes",
-          "type": { "bool": true }
+        "imageUrl": {
+          "displayName": "Image URL",
+          "description": "URL to the logo image (PNG, JPG, or SVG)",
+          "type": { "text": true }
         },
-        "groupBy": {
-          "displayName": "Group By",
+        "size": {
+          "displayName": "Size",
+          "description": "Logo display size",
           "type": {
             "enumeration": [
-              { "value": "none", "displayName": "None" },
-              { "value": "areaPath", "displayName": "Area Path" },
+              { "value": "small", "displayName": "Small (24px)" },
+              { "value": "medium", "displayName": "Medium (32px)" },
+              { "value": "large", "displayName": "Large (48px)" }
+            ]
+          }
+        },
+        "show": {
+          "displayName": "Show Logo",
+          "description": "Display the logo in the header",
+          "type": { "bool": true }
+        }
+      }
+    },
+    "workItemColors": {
+      "displayName": "Work Item Colors",
+      "description": "Colors for each work item type",
+      "properties": {
+        "epicColor": {
+          "displayName": "Epic",
+          "description": "Color for Epic work items",
+          "type": { "fill": { "solid": { "color": true } } }
+        },
+        "featureColor": {
+          "displayName": "Feature",
+          "description": "Color for Feature work items",
+          "type": { "fill": { "solid": { "color": true } } }
+        },
+        "milestoneColor": {
+          "displayName": "Milestone",
+          "description": "Color for Milestone work items",
+          "type": { "fill": { "solid": { "color": true } } }
+        }
+      }
+    },
+    "milestones": {
+      "displayName": "Milestones",
+      "description": "Configure milestone display options",
+      "properties": {
+        "labelPosition": {
+          "displayName": "Label Position",
+          "description": "Position of milestone title label",
+          "type": {
+            "enumeration": [
+              { "value": "right", "displayName": "Right" },
+              { "value": "left", "displayName": "Left" },
+              { "value": "none", "displayName": "No Label" }
+            ]
+          }
+        },
+        "showDate": {
+          "displayName": "Show Date",
+          "description": "Display the target date next to milestone",
+          "type": { "bool": true }
+        }
+      }
+    },
+    "organization": {
+      "displayName": "Organization",
+      "description": "Configure how work items are grouped",
+      "properties": {
+        "groupBy": {
+          "displayName": "Group By",
+          "description": "Choose how to group the top-level rows",
+          "type": {
+            "enumeration": [
+              { "value": "epic", "displayName": "Epic (Parent hierarchy)" },
+              { "value": "areaPath", "displayName": "Area Path / Scheme" },
               { "value": "iterationPath", "displayName": "Iteration Path" },
               { "value": "assignedTo", "displayName": "Assigned To" },
               { "value": "state", "displayName": "State" },
@@ -148,31 +271,68 @@
               { "value": "tags", "displayName": "Tags" }
             ]
           }
+        },
+        "showHierarchy": {
+          "displayName": "Collapsible Groups",
+          "description": "Display items in a collapsible tree structure",
+          "type": { "bool": true }
+        },
+        "defaultExpanded": {
+          "displayName": "Expand by Default",
+          "description": "Expand all groups by default",
+          "type": { "bool": true }
         }
       }
     },
-    "colors": {
-      "displayName": "Colors",
+    "levels": {
+      "displayName": "Visible Levels",
+      "description": "Choose which work item types to show",
       "properties": {
-        "epicColor": {
-          "displayName": "Epic Color",
-          "type": { "fill": { "solid": { "color": true } } }
+        "showEpics": {
+          "displayName": "Show Epics",
+          "type": { "bool": true }
         },
-        "milestoneColor": {
-          "displayName": "Milestone Color",
-          "type": { "fill": { "solid": { "color": true } } }
+        "showFeatures": {
+          "displayName": "Show Features",
+          "type": { "bool": true }
         },
-        "featureColor": {
-          "displayName": "Feature Color",
-          "type": { "fill": { "solid": { "color": true } } }
+        "showMilestones": {
+          "displayName": "Show Milestones",
+          "type": { "bool": true }
         }
       }
     },
     "dependencies": {
       "displayName": "Dependencies",
+      "description": "Configure dependency line display",
       "properties": {
         "show": {
-          "displayName": "Show Dependencies",
+          "displayName": "Show Lines",
+          "description": "Draw dependency lines between items",
+          "type": { "bool": true }
+        },
+        "showParentChild": {
+          "displayName": "Parent-Child Links",
+          "description": "Draw lines from Epics to their Features/Milestones",
+          "type": { "bool": true }
+        },
+        "showPredecessors": {
+          "displayName": "Predecessor Links",
+          "description": "Draw lines based on Predecessor ID field",
+          "type": { "bool": true }
+        },
+        "lineColor": {
+          "displayName": "Line Color",
+          "type": { "fill": { "solid": { "color": true } } }
+        }
+      }
+    },
+    "export": {
+      "displayName": "Export",
+      "properties": {
+        "pdfMode": {
+          "displayName": "PDF-Friendly Mode",
+          "description": "Expand all items and optimize for PDF export",
           "type": { "bool": true }
         }
       }
