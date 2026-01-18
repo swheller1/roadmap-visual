@@ -141,40 +141,88 @@ powerbi-visual/
 
 ### Required Fields
 
-| Field | Description | Example |
-|-------|-------------|---------|
-| Work Item ID | Unique identifier | 1001 |
-| Title | Item name | "Platform Modernisation" |
-| Work Item Type | Epic/Feature/Milestone | "Epic" |
+| Field | Data Role | Description | OData Field | Example |
+|-------|-----------|-------------|-------------|---------|
+| Work Item ID | `workItemId` | Unique identifier | `WorkItemId` | 1001 |
+| Title | `title` | Item name | `Title` | "Platform Modernisation" |
+| Work Item Type | `workItemType` | Epic/Feature/Milestone | `WorkItemType` | "Epic" |
 
 ### Recommended Fields
 
-| Field | Description |
-|-------|-------------|
-| Start Date | When work begins |
-| Target Date | Deadline/end date |
-| Parent ID | Links to parent Epic |
-| State | New/Active/Closed |
-| Area Path | For swimlane grouping |
-| Assigned To | Owner |
+| Field | Data Role | Description | OData Field |
+|-------|-----------|-------------|-------------|
+| Start Date | `startDate` | When work begins | `StartDate` or `Microsoft.VSTS.Scheduling.StartDate` |
+| Target Date | `targetDate` | Deadline/end date | `TargetDate` or `Microsoft.VSTS.Scheduling.TargetDate` |
+| Parent ID | `parentId` | Links to parent Epic | `ParentWorkItemId` |
+| State | `state` | New/Active/Closed | `State` |
+| Area Path | `areaPath` | For swimlane grouping | `AreaPath` or `Area/AreaPath` |
+| Iteration Path | `iterationPath` | Sprint/iteration | `IterationPath` or `Iteration/IterationPath` |
+| Assigned To | `assignedTo` | Owner | `AssignedTo/UserName` |
+| Priority | `priority` | Priority level (1-4) | `Priority` or `Microsoft.VSTS.Common.Priority` |
+| Tags | `tags` | Comma-separated tags | `Tags` |
 
-### Azure DevOps Analytics Connection
+---
+
+## Azure DevOps Analytics / OData Field Reference
+
+### Complete Field List for OData Queries
+
+When connecting to Azure DevOps Analytics, use these OData fields:
+
+| Visual Field | OData Entity | OData Field Name | Notes |
+|--------------|--------------|------------------|-------|
+| Work Item ID | WorkItems | `WorkItemId` | Primary key |
+| Title | WorkItems | `Title` | Display name |
+| Work Item Type | WorkItems | `WorkItemType` | Filter: Epic, Feature, Milestone |
+| State | WorkItems | `State` | New, Active, Resolved, Closed |
+| Start Date | WorkItems | `StartDate` | May be null |
+| Target Date | WorkItems | `TargetDate` | May be null |
+| Parent ID | WorkItems | `ParentWorkItemId` | Links hierarchy |
+| Area Path | Area | `AreaPath` | Use $expand=Area |
+| Iteration Path | Iteration | `IterationPath` | Use $expand=Iteration |
+| Assigned To | User | `UserName` | Use $expand=AssignedTo |
+| Priority | WorkItems | `Priority` | Integer 1-4 |
+| Tags | WorkItems | `Tags` | Comma-separated string |
+
+### Sample OData Query URLs
+
+**Basic Query (Required Fields Only):**
+```
+https://analytics.dev.azure.com/{org}/{project}/_odata/v4.0-preview/WorkItems?
+  $select=WorkItemId,Title,WorkItemType,State
+  &$filter=WorkItemType in ('Epic','Feature','Milestone')
+```
+
+**Full Query (All Fields):**
+```
+https://analytics.dev.azure.com/{org}/{project}/_odata/v4.0-preview/WorkItems?
+  $select=WorkItemId,Title,WorkItemType,State,StartDate,TargetDate,ParentWorkItemId,Priority,Tags
+  &$filter=WorkItemType in ('Epic','Feature','Milestone')
+  &$expand=Area($select=AreaPath),Iteration($select=IterationPath),AssignedTo($select=UserName)
+```
+
+**With Date Filtering:**
+```
+https://analytics.dev.azure.com/{org}/{project}/_odata/v4.0-preview/WorkItems?
+  $select=WorkItemId,Title,WorkItemType,State,StartDate,TargetDate,ParentWorkItemId
+  &$filter=WorkItemType in ('Epic','Feature','Milestone') and TargetDate ge 2024-01-01
+  &$expand=Area($select=AreaPath)
+```
+
+### Azure DevOps Analytics Connection Steps
 
 1. In Power BI Desktop, click **Get Data** → **OData Feed**
 
-2. Enter URL:
-   ```
-   https://analytics.dev.azure.com/{org}/{project}/_odata/v3.0/WorkItems?
-   $select=WorkItemId,Title,WorkItemType,State,StartDate,TargetDate,ParentWorkItemId
-   &$filter=WorkItemType in ('Epic','Feature','Milestone')
-   &$expand=Parent($select=WorkItemId),Area($select=AreaPath),Iteration($select=IterationPath)
-   ```
+2. Enter the OData URL (see examples above), replacing `{org}` and `{project}` with your values
 
-3. Authenticate with your Azure DevOps credentials
+3. Select **Organizational Account** and authenticate with your Azure DevOps credentials
 
-4. Transform data in Power Query if needed
+4. In Power Query Editor, transform data if needed:
+   - Expand nested columns (Area, Iteration, AssignedTo)
+   - Rename columns to match visual data roles
+   - Set correct data types (dates, numbers)
 
-5. Drag fields to the visual's data roles
+5. Drag fields to the visual's data roles in the Fields pane
 
 ---
 
@@ -275,6 +323,8 @@ This visual:
 
 | File | Purpose |
 |------|---------|
+| `README.md` | Developer setup and reference |
+| `USER_MANUAL.md` | End user guide |
 | `package.json` | npm dependencies & scripts |
 | `pbiviz.json` | Visual manifest |
 | `capabilities.json` | Data roles & settings |
@@ -282,6 +332,13 @@ This visual:
 | `src/visual.ts` | Main visual code |
 | `style/visual.less` | Styling |
 | `assets/icon.png` | Visual icon |
+
+---
+
+## Documentation
+
+- **[User Manual](USER_MANUAL.md)** — Comprehensive guide for end users
+- **[README](README.md)** — This file, for developers and setup
 
 ---
 
