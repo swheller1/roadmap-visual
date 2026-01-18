@@ -1,6 +1,6 @@
 /**
- * PDF Documentation Generator
- * Converts markdown documentation to client-releasable PDFs
+ * Professional Documentation PDF Generator
+ * Clean, minimal design for client-releasable documents
  */
 
 const fs = require('fs');
@@ -8,512 +8,410 @@ const path = require('path');
 const { jsPDF } = require('jspdf');
 const { marked } = require('marked');
 
-// PDF Configuration
-const CONFIG = {
-    pageWidth: 210, // A4 width in mm
-    pageHeight: 297, // A4 height in mm
-    margin: {
-        top: 25,
-        bottom: 25,
-        left: 20,
-        right: 20
-    },
-    fonts: {
-        title: { size: 24, style: 'bold' },
-        h1: { size: 18, style: 'bold' },
-        h2: { size: 14, style: 'bold' },
-        h3: { size: 12, style: 'bold' },
-        h4: { size: 11, style: 'bold' },
-        body: { size: 10, style: 'normal' },
-        code: { size: 9, style: 'normal' },
-        tableHeader: { size: 9, style: 'bold' },
-        tableCell: { size: 9, style: 'normal' },
-        footer: { size: 8, style: 'normal' }
-    },
-    colors: {
-        primary: [0, 51, 102],      // Dark blue
-        secondary: [51, 51, 51],     // Dark gray
-        accent: [0, 102, 153],       // Teal
-        success: [34, 139, 34],      // Green
-        warning: [220, 38, 38],      // Red
-        tableHeader: [240, 240, 240],
-        tableBorder: [200, 200, 200],
-        codeBg: [245, 245, 245]
-    }
+const PAGE = {
+    width: 210,
+    height: 297,
+    margin: { top: 20, bottom: 20, left: 25, right: 25 }
 };
 
-class PDFGenerator {
-    constructor(config = CONFIG) {
-        this.config = config;
+class DocumentGenerator {
+    constructor() {
         this.doc = null;
-        this.currentY = 0;
-        this.pageNumber = 0;
-        this.documentTitle = '';
-        this.securityClassification = 'OFFICIAL';
+        this.y = 0;
+        this.pageNum = 0;
+        this.title = '';
+        this.subtitle = '';
     }
 
-    init(title, classification = 'OFFICIAL') {
-        this.doc = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: 'a4'
-        });
-        this.documentTitle = title;
-        this.securityClassification = classification;
-        this.currentY = this.config.margin.top;
-        this.pageNumber = 1;
-        this.addHeader();
-        this.addFooter();
+    get width() {
+        return PAGE.width - PAGE.margin.left - PAGE.margin.right;
     }
 
-    addHeader() {
-        const { margin, pageWidth } = this.config;
+    get bottomLimit() {
+        return PAGE.height - PAGE.margin.bottom - 10;
+    }
 
-        // Security classification at top
-        this.doc.setFontSize(10);
+    create(title, subtitle) {
+        this.doc = new jsPDF({ unit: 'mm', format: 'a4' });
+        this.title = title;
+        this.subtitle = subtitle;
+        this.pageNum = 0;
+        return this;
+    }
+
+    // Cover page - clean and professional
+    coverPage() {
+        // Title area - positioned in upper third
+        this.doc.setFontSize(32);
         this.doc.setFont('helvetica', 'bold');
-        this.doc.setTextColor(220, 38, 38); // Red
-        this.doc.text(this.securityClassification, pageWidth / 2, 10, { align: 'center' });
+        this.doc.setTextColor(30, 30, 30);
 
-        // Header line
-        this.doc.setDrawColor(0, 51, 102);
+        const titleLines = this.doc.splitTextToSize(this.title, this.width);
+        let y = 80;
+        titleLines.forEach(line => {
+            this.doc.text(line, PAGE.margin.left, y);
+            y += 14;
+        });
+
+        // Subtitle
+        if (this.subtitle) {
+            this.doc.setFontSize(18);
+            this.doc.setFont('helvetica', 'normal');
+            this.doc.setTextColor(80, 80, 80);
+            this.doc.text(this.subtitle, PAGE.margin.left, y + 8);
+        }
+
+        // Simple line separator
+        this.doc.setDrawColor(200, 200, 200);
         this.doc.setLineWidth(0.5);
-        this.doc.line(margin.left, 15, pageWidth - margin.right, 15);
-    }
+        this.doc.line(PAGE.margin.left, y + 25, PAGE.margin.left + 60, y + 25);
 
-    addFooter() {
-        const { margin, pageWidth, pageHeight } = this.config;
-
-        // Footer line
-        this.doc.setDrawColor(0, 51, 102);
-        this.doc.setLineWidth(0.5);
-        this.doc.line(margin.left, pageHeight - 20, pageWidth - margin.right, pageHeight - 20);
-
-        // Page number
-        this.doc.setFontSize(8);
+        // Document metadata at bottom
+        this.doc.setFontSize(10);
         this.doc.setFont('helvetica', 'normal');
         this.doc.setTextColor(100, 100, 100);
-        this.doc.text(`Page ${this.pageNumber}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
 
-        // Security classification at bottom
-        this.doc.setFontSize(10);
-        this.doc.setFont('helvetica', 'bold');
-        this.doc.setTextColor(220, 38, 38);
-        this.doc.text(this.securityClassification, pageWidth / 2, pageHeight - 8, { align: 'center' });
+        const meta = [
+            `Version 1.0.0`,
+            new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+        ];
+
+        let metaY = PAGE.height - 50;
+        meta.forEach(line => {
+            this.doc.text(line, PAGE.margin.left, metaY);
+            metaY += 6;
+        });
+
+        return this;
     }
 
-    newPage() {
+    // Start content pages
+    startContent() {
+        this.nextPage();
+        return this;
+    }
+
+    nextPage() {
         this.doc.addPage();
-        this.pageNumber++;
-        this.currentY = this.config.margin.top;
-        this.addHeader();
-        this.addFooter();
+        this.pageNum++;
+        this.y = PAGE.margin.top + 5;
+
+        // Page number at bottom
+        this.doc.setFontSize(9);
+        this.doc.setFont('helvetica', 'normal');
+        this.doc.setTextColor(150, 150, 150);
+        this.doc.text(String(this.pageNum), PAGE.width / 2, PAGE.height - 10, { align: 'center' });
     }
 
-    checkPageBreak(requiredSpace = 20) {
-        const { pageHeight, margin } = this.config;
-        if (this.currentY + requiredSpace > pageHeight - margin.bottom - 25) {
-            this.newPage();
+    needsNewPage(height = 15) {
+        if (this.y + height > this.bottomLimit) {
+            this.nextPage();
             return true;
         }
         return false;
     }
 
-    getContentWidth() {
-        const { pageWidth, margin } = this.config;
-        return pageWidth - margin.left - margin.right;
+    // Section heading
+    heading(text, level) {
+        const sizes = { 1: 16, 2: 13, 3: 11, 4: 10 };
+        const spacing = { 1: 12, 2: 10, 3: 8, 4: 6 };
+
+        this.needsNewPage(spacing[level] + 12);
+        this.y += spacing[level] || 8;
+
+        this.doc.setFontSize(sizes[level] || 10);
+        this.doc.setFont('helvetica', 'bold');
+        this.doc.setTextColor(30, 30, 30);
+
+        const lines = this.doc.splitTextToSize(text, this.width);
+        lines.forEach(line => {
+            this.doc.text(line, PAGE.margin.left, this.y);
+            this.y += (sizes[level] || 10) * 0.5;
+        });
+
+        this.y += 4;
+        return this;
     }
 
-    addTitle(text) {
-        this.checkPageBreak(40);
-        const { fonts, colors, margin, pageWidth } = this.config;
+    // Paragraph text
+    paragraph(text) {
+        if (!text?.trim()) return this;
 
-        this.currentY += 10;
-        this.doc.setFontSize(fonts.title.size);
-        this.doc.setFont('helvetica', fonts.title.style);
-        this.doc.setTextColor(...colors.primary);
+        text = this.clean(text);
+        this.needsNewPage(8);
 
-        const lines = this.doc.splitTextToSize(text, this.getContentWidth());
-        this.doc.text(lines, pageWidth / 2, this.currentY, { align: 'center' });
-        this.currentY += lines.length * 10 + 5;
-
-        // Underline
-        this.doc.setDrawColor(...colors.primary);
-        this.doc.setLineWidth(1);
-        this.doc.line(margin.left + 20, this.currentY, pageWidth - margin.right - 20, this.currentY);
-        this.currentY += 10;
-    }
-
-    addHeading(text, level) {
-        const fontConfig = this.config.fonts[`h${level}`] || this.config.fonts.h3;
-        const spacing = level === 1 ? 12 : level === 2 ? 8 : 6;
-
-        this.checkPageBreak(spacing + 10);
-        this.currentY += spacing;
-
-        this.doc.setFontSize(fontConfig.size);
-        this.doc.setFont('helvetica', fontConfig.style);
-        this.doc.setTextColor(...this.config.colors.primary);
-
-        const lines = this.doc.splitTextToSize(text, this.getContentWidth());
-        this.doc.text(lines, this.config.margin.left, this.currentY);
-        this.currentY += lines.length * (fontConfig.size * 0.4) + 3;
-
-        if (level <= 2) {
-            this.doc.setDrawColor(...this.config.colors.tableBorder);
-            this.doc.setLineWidth(0.3);
-            this.doc.line(this.config.margin.left, this.currentY,
-                         this.config.margin.left + this.getContentWidth() * 0.3, this.currentY);
-            this.currentY += 3;
-        }
-    }
-
-    addParagraph(text) {
-        if (!text || text.trim() === '') return;
-
-        const { fonts, colors, margin } = this.config;
-
-        this.doc.setFontSize(fonts.body.size);
-        this.doc.setFont('helvetica', fonts.body.style);
-        this.doc.setTextColor(...colors.secondary);
-
-        // Clean up text
-        text = text.replace(/\*\*(.*?)\*\*/g, '$1'); // Remove bold markers for plain text
-        text = text.replace(/\*(.*?)\*/g, '$1'); // Remove italic markers
-        text = text.replace(/`(.*?)`/g, '$1'); // Remove code markers
-
-        const lines = this.doc.splitTextToSize(text, this.getContentWidth());
-
-        for (const line of lines) {
-            this.checkPageBreak(6);
-            this.doc.text(line, margin.left, this.currentY);
-            this.currentY += 5;
-        }
-        this.currentY += 2;
-    }
-
-    addBulletPoint(text, indent = 0) {
-        const { fonts, colors, margin } = this.config;
-
-        this.checkPageBreak(6);
-
-        this.doc.setFontSize(fonts.body.size);
-        this.doc.setFont('helvetica', fonts.body.style);
-        this.doc.setTextColor(...colors.secondary);
-
-        const indentSize = indent * 5;
-        const bulletX = margin.left + indentSize;
-        const textX = bulletX + 5;
-
-        // Clean up text
-        text = text.replace(/\*\*(.*?)\*\*/g, '$1');
-        text = text.replace(/\*(.*?)\*/g, '$1');
-        text = text.replace(/`(.*?)`/g, '$1');
-
-        // Draw bullet
-        this.doc.circle(bulletX + 1, this.currentY - 1.5, 0.8, 'F');
-
-        const lines = this.doc.splitTextToSize(text, this.getContentWidth() - indentSize - 5);
-        for (let i = 0; i < lines.length; i++) {
-            if (i > 0) this.checkPageBreak(5);
-            this.doc.text(lines[i], textX, this.currentY);
-            this.currentY += 5;
-        }
-    }
-
-    addNumberedItem(text, number, indent = 0) {
-        const { fonts, colors, margin } = this.config;
-
-        this.checkPageBreak(6);
-
-        this.doc.setFontSize(fonts.body.size);
-        this.doc.setFont('helvetica', fonts.body.style);
-        this.doc.setTextColor(...colors.secondary);
-
-        const indentSize = indent * 5;
-        const numberX = margin.left + indentSize;
-        const textX = numberX + 8;
-
-        // Clean up text
-        text = text.replace(/\*\*(.*?)\*\*/g, '$1');
-        text = text.replace(/\*(.*?)\*/g, '$1');
-        text = text.replace(/`(.*?)`/g, '$1');
-
-        // Draw number
-        this.doc.text(`${number}.`, numberX, this.currentY);
-
-        const lines = this.doc.splitTextToSize(text, this.getContentWidth() - indentSize - 8);
-        for (let i = 0; i < lines.length; i++) {
-            if (i > 0) this.checkPageBreak(5);
-            this.doc.text(lines[i], textX, this.currentY);
-            this.currentY += 5;
-        }
-    }
-
-    addCodeBlock(code) {
-        const { fonts, colors, margin } = this.config;
-
-        const lines = code.split('\n');
-        const blockHeight = lines.length * 4 + 6;
-
-        this.checkPageBreak(blockHeight);
-
-        // Background
-        this.doc.setFillColor(...colors.codeBg);
-        this.doc.roundedRect(margin.left, this.currentY - 2, this.getContentWidth(), blockHeight, 2, 2, 'F');
-
-        // Border
-        this.doc.setDrawColor(...colors.tableBorder);
-        this.doc.setLineWidth(0.2);
-        this.doc.roundedRect(margin.left, this.currentY - 2, this.getContentWidth(), blockHeight, 2, 2, 'S');
-
-        this.currentY += 3;
-        this.doc.setFontSize(fonts.code.size);
-        this.doc.setFont('courier', fonts.code.style);
+        this.doc.setFontSize(10);
+        this.doc.setFont('helvetica', 'normal');
         this.doc.setTextColor(50, 50, 50);
 
-        for (const line of lines) {
-            const truncatedLine = line.substring(0, 85); // Truncate long lines
-            this.doc.text(truncatedLine, margin.left + 3, this.currentY);
-            this.currentY += 4;
-        }
-        this.currentY += 5;
+        const lines = this.doc.splitTextToSize(text, this.width);
+        lines.forEach(line => {
+            this.needsNewPage(5);
+            this.doc.text(line, PAGE.margin.left, this.y);
+            this.y += 5;
+        });
+
+        this.y += 3;
+        return this;
     }
 
-    addTable(headers, rows) {
-        const { fonts, colors, margin, pageWidth } = this.config;
-        const contentWidth = this.getContentWidth();
+    // Bullet list
+    bullets(items, numbered = false) {
+        this.doc.setFontSize(10);
+        this.doc.setFont('helvetica', 'normal');
+        this.doc.setTextColor(50, 50, 50);
 
-        // Calculate column widths based on content
-        const colCount = headers.length;
-        const colWidths = this.calculateColumnWidths(headers, rows, contentWidth);
+        items.forEach((item, i) => {
+            this.needsNewPage(6);
 
-        // Draw header
-        this.checkPageBreak(12);
-        let x = margin.left;
-        const headerHeight = 8;
+            const text = this.clean(item);
+            const marker = numbered ? `${i + 1}.` : '•';
+            const indent = 8;
 
-        this.doc.setFillColor(...colors.tableHeader);
-        this.doc.rect(margin.left, this.currentY - 5, contentWidth, headerHeight, 'F');
+            this.doc.text(marker, PAGE.margin.left, this.y);
 
-        this.doc.setFontSize(fonts.tableHeader.size);
-        this.doc.setFont('helvetica', fonts.tableHeader.style);
-        this.doc.setTextColor(...colors.primary);
+            const lines = this.doc.splitTextToSize(text, this.width - indent);
+            lines.forEach((line, j) => {
+                if (j > 0) this.needsNewPage(5);
+                this.doc.text(line, PAGE.margin.left + indent, this.y);
+                this.y += 5;
+            });
+        });
 
-        for (let i = 0; i < headers.length; i++) {
-            const cellText = this.truncateText(headers[i], colWidths[i] - 2);
-            this.doc.text(cellText, x + 2, this.currentY);
+        this.y += 3;
+        return this;
+    }
+
+    // Table
+    table(headers, rows) {
+        const colWidths = this.columnWidths(headers, rows);
+        const rowH = 7;
+        const headerH = 8;
+
+        this.needsNewPage(headerH + rowH * 2);
+
+        // Header row
+        let x = PAGE.margin.left;
+        this.doc.setFillColor(245, 245, 245);
+        this.doc.rect(PAGE.margin.left, this.y - 5, this.width, headerH, 'F');
+
+        this.doc.setFontSize(9);
+        this.doc.setFont('helvetica', 'bold');
+        this.doc.setTextColor(30, 30, 30);
+
+        headers.forEach((h, i) => {
+            this.doc.text(this.truncate(h, colWidths[i] - 3), x + 2, this.y);
             x += colWidths[i];
-        }
-        this.currentY += headerHeight - 2;
+        });
 
-        // Draw rows
-        this.doc.setFontSize(fonts.tableCell.size);
-        this.doc.setFont('helvetica', fonts.tableCell.style);
+        this.y += headerH;
 
-        for (const row of rows) {
-            this.checkPageBreak(8);
-            x = margin.left;
+        // Data rows
+        this.doc.setFont('helvetica', 'normal');
 
-            // Row border
-            this.doc.setDrawColor(...colors.tableBorder);
-            this.doc.setLineWidth(0.1);
-            this.doc.line(margin.left, this.currentY - 4, margin.left + contentWidth, this.currentY - 4);
+        rows.forEach((row, ri) => {
+            this.needsNewPage(rowH);
 
-            for (let i = 0; i < row.length; i++) {
-                let cellText = row[i] || '';
-                // Clean up cell text
-                cellText = cellText.replace(/\*\*(.*?)\*\*/g, '$1');
-                cellText = cellText.replace(/`(.*?)`/g, '$1');
+            // Alternate row shading
+            if (ri % 2 === 1) {
+                this.doc.setFillColor(250, 250, 250);
+                this.doc.rect(PAGE.margin.left, this.y - 5, this.width, rowH, 'F');
+            }
 
-                // Color status cells
-                if (cellText.includes('PASS') || cellText.includes('COMPLIANT') || cellText.includes('✓')) {
-                    this.doc.setTextColor(...colors.success);
-                } else if (cellText.includes('FAIL') || cellText.includes('NOT')) {
-                    this.doc.setTextColor(...colors.warning);
+            x = PAGE.margin.left;
+            row.forEach((cell, ci) => {
+                let text = this.clean(cell || '');
+
+                // Status coloring
+                if (/PASS|COMPLIANT|✓|YES/i.test(text)) {
+                    this.doc.setTextColor(34, 120, 60);
+                } else if (/FAIL|NOT\s|NO$/i.test(text)) {
+                    this.doc.setTextColor(180, 40, 40);
+                } else if (/PARTIAL|NEEDS/i.test(text)) {
+                    this.doc.setTextColor(160, 120, 0);
                 } else {
-                    this.doc.setTextColor(...colors.secondary);
+                    this.doc.setTextColor(50, 50, 50);
                 }
 
-                cellText = this.truncateText(cellText, colWidths[i] - 2);
-                this.doc.text(cellText, x + 2, this.currentY);
-                x += colWidths[i];
-            }
-            this.currentY += 6;
-        }
+                this.doc.text(this.truncate(text, colWidths[ci] - 3), x + 2, this.y);
+                x += colWidths[ci];
+            });
 
-        // Bottom border
-        this.doc.setDrawColor(...colors.tableBorder);
-        this.doc.line(margin.left, this.currentY - 4, margin.left + contentWidth, this.currentY - 4);
-        this.currentY += 5;
+            this.y += rowH;
+        });
+
+        // Bottom line
+        this.doc.setDrawColor(220, 220, 220);
+        this.doc.setLineWidth(0.2);
+        this.doc.line(PAGE.margin.left, this.y - 3, PAGE.margin.left + this.width, this.y - 3);
+
+        this.y += 6;
+        return this;
     }
 
-    calculateColumnWidths(headers, rows, totalWidth) {
-        const colCount = headers.length;
-        const widths = [];
+    // Code block
+    code(text, lang = '') {
+        const lines = text.split('\n');
+        const lineH = 4;
+        const padding = 5;
+        const blockH = Math.min(lines.length * lineH + padding * 2, 80);
 
-        for (let i = 0; i < colCount; i++) {
-            let maxLen = headers[i].length;
-            for (const row of rows) {
-                if (row[i]) {
-                    maxLen = Math.max(maxLen, row[i].length);
-                }
-            }
-            widths.push(maxLen);
-        }
+        this.needsNewPage(blockH + 4);
 
-        const totalLen = widths.reduce((a, b) => a + b, 0);
-        return widths.map(w => Math.max((w / totalLen) * totalWidth, 20));
-    }
-
-    truncateText(text, maxWidth) {
-        if (!text) return '';
-        const charWidth = 1.8; // Approximate character width in mm
-        const maxChars = Math.floor(maxWidth / charWidth);
-        if (text.length > maxChars) {
-            return text.substring(0, maxChars - 3) + '...';
-        }
-        return text;
-    }
-
-    addHorizontalRule() {
-        this.currentY += 5;
-        this.doc.setDrawColor(...this.config.colors.tableBorder);
+        // Background
+        this.doc.setFillColor(248, 248, 248);
+        this.doc.setDrawColor(230, 230, 230);
         this.doc.setLineWidth(0.3);
-        this.doc.line(this.config.margin.left, this.currentY,
-                     this.config.margin.left + this.getContentWidth(), this.currentY);
-        this.currentY += 8;
+        this.doc.roundedRect(PAGE.margin.left, this.y - 2, this.width, blockH, 1, 1, 'FD');
+
+        this.doc.setFontSize(8);
+        this.doc.setFont('courier', 'normal');
+        this.doc.setTextColor(60, 60, 60);
+
+        this.y += padding;
+
+        lines.forEach((line, i) => {
+            if (this.y > this.bottomLimit - 5) return;
+            this.doc.text(line.substring(0, 95), PAGE.margin.left + 4, this.y);
+            this.y += lineH;
+        });
+
+        this.y += padding + 4;
+        return this;
     }
 
-    parseMarkdown(markdown) {
-        // Tokenize the markdown
-        const tokens = marked.lexer(markdown);
-        let listNumber = 0;
+    // Horizontal rule
+    rule() {
+        this.y += 4;
+        this.doc.setDrawColor(220, 220, 220);
+        this.doc.setLineWidth(0.3);
+        this.doc.line(PAGE.margin.left, this.y, PAGE.margin.left + this.width, this.y);
+        this.y += 6;
+        return this;
+    }
 
-        for (const token of tokens) {
+    // Utilities
+    clean(text) {
+        if (!text) return '';
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '$1')
+            .replace(/\*(.*?)\*/g, '$1')
+            .replace(/`(.*?)`/g, '$1')
+            .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+            .trim();
+    }
+
+    truncate(text, maxW) {
+        if (!text) return '';
+        const max = Math.floor(maxW / 1.8);
+        return text.length > max ? text.substring(0, max - 1) + '…' : text;
+    }
+
+    columnWidths(headers, rows) {
+        const widths = headers.map((h, i) => {
+            let max = h.length;
+            rows.forEach(r => {
+                if (r[i]) max = Math.max(max, String(r[i]).length);
+            });
+            return max;
+        });
+
+        const total = widths.reduce((a, b) => a + b, 0);
+        return widths.map(w => Math.max((w / total) * this.width, 20));
+    }
+
+    // Parse markdown content
+    parse(markdown) {
+        const tokens = marked.lexer(markdown);
+        let skipFirst = true;
+
+        tokens.forEach(token => {
             switch (token.type) {
                 case 'heading':
-                    if (token.depth === 1 && this.currentY < 50) {
-                        this.addTitle(token.text);
-                    } else {
-                        this.addHeading(token.text, token.depth);
+                    if (skipFirst && token.depth === 1) {
+                        skipFirst = false;
+                        return;
                     }
-                    listNumber = 0;
+                    this.heading(token.text, token.depth);
                     break;
 
                 case 'paragraph':
-                    this.addParagraph(token.text);
-                    listNumber = 0;
+                    this.paragraph(token.text);
                     break;
 
                 case 'list':
-                    for (let i = 0; i < token.items.length; i++) {
-                        const item = token.items[i];
-                        if (token.ordered) {
-                            this.addNumberedItem(item.text, i + 1);
-                        } else {
-                            this.addBulletPoint(item.text);
-                        }
-                    }
+                    this.bullets(token.items.map(i => i.text), token.ordered);
                     break;
 
                 case 'code':
-                    this.addCodeBlock(token.text);
+                    this.code(token.text, token.lang);
                     break;
 
                 case 'table':
-                    const headers = token.header.map(h => h.text);
-                    const rows = token.rows.map(row => row.map(cell => cell.text));
-                    this.addTable(headers, rows);
+                    this.table(
+                        token.header.map(h => h.text),
+                        token.rows.map(r => r.map(c => c.text))
+                    );
                     break;
 
                 case 'hr':
-                    this.addHorizontalRule();
+                    this.rule();
                     break;
 
                 case 'space':
-                    this.currentY += 3;
+                    this.y += 2;
                     break;
             }
-        }
+        });
+
+        return this;
     }
 
+    // Save to file
     save(filename) {
-        const outputPath = path.join(__dirname, '..', 'docs', filename);
-        const buffer = Buffer.from(this.doc.output('arraybuffer'));
-        fs.writeFileSync(outputPath, buffer);
-        console.log(`  ✓ Generated: ${outputPath}`);
-        return outputPath;
+        const outPath = path.join(__dirname, '..', 'docs', filename);
+        fs.writeFileSync(outPath, Buffer.from(this.doc.output('arraybuffer')));
+        return outPath;
     }
 }
 
-// Generate PDFs for all documentation
-async function generateDocumentation() {
-    console.log('\n📄 Generating Client Documentation PDFs\n');
-    console.log('=' .repeat(50));
+// Generate all documents
+async function main() {
+    console.log('\nGenerating PDF Documentation\n');
 
     const docsDir = path.join(__dirname, '..', 'docs');
-    if (!fs.existsSync(docsDir)) {
-        fs.mkdirSync(docsDir, { recursive: true });
-    }
+    if (!fs.existsSync(docsDir)) fs.mkdirSync(docsDir, { recursive: true });
 
-    const documents = [
-        {
-            source: 'USER_MANUAL.md',
-            output: 'Roadmap_Visual_User_Manual.pdf',
-            title: 'ROADMAP VISUAL FOR POWER BI - USER MANUAL',
-            classification: 'OFFICIAL'
-        },
-        {
-            source: 'TEST_REPORT.md',
-            output: 'Roadmap_Visual_Test_Report.pdf',
-            title: 'ROADMAP VISUAL - TEST REPORT',
-            classification: 'OFFICIAL'
-        },
-        {
-            source: 'SECURITY_AUDIT.md',
-            output: 'Roadmap_Visual_Security_Audit.pdf',
-            title: 'SECURITY AUDIT REPORT - ROADMAP VISUAL',
-            classification: 'OFFICIAL'
-        }
+    const docs = [
+        { src: 'USER_MANUAL.md', out: 'Roadmap_Visual_User_Manual.pdf', title: 'Roadmap Visual', sub: 'User Manual' },
+        { src: 'TEST_REPORT.md', out: 'Roadmap_Visual_Test_Report.pdf', title: 'Roadmap Visual', sub: 'Test Report' },
+        { src: 'SECURITY_AUDIT.md', out: 'Roadmap_Visual_Security_Audit.pdf', title: 'Roadmap Visual', sub: 'Security Audit Report' }
     ];
 
-    const generatedFiles = [];
-
-    for (const doc of documents) {
-        console.log(`\n📝 Processing: ${doc.source}`);
-
-        const sourcePath = path.join(__dirname, '..', doc.source);
-        if (!fs.existsSync(sourcePath)) {
-            console.log(`  ⚠ Source file not found: ${sourcePath}`);
+    for (const d of docs) {
+        const srcPath = path.join(__dirname, '..', d.src);
+        if (!fs.existsSync(srcPath)) {
+            console.log(`  Skip: ${d.src} not found`);
             continue;
         }
 
-        const markdown = fs.readFileSync(sourcePath, 'utf8');
+        const md = fs.readFileSync(srcPath, 'utf8');
 
-        const generator = new PDFGenerator();
-        generator.init(doc.title, doc.classification);
-        generator.parseMarkdown(markdown);
+        new DocumentGenerator()
+            .create(d.title, d.sub)
+            .coverPage()
+            .startContent()
+            .parse(md)
+            .save(d.out);
 
-        const outputPath = generator.save(doc.output);
-        generatedFiles.push(outputPath);
+        console.log(`  Created: ${d.out}`);
     }
 
-    console.log('\n' + '=' .repeat(50));
-    console.log('\n✅ Documentation generation complete!\n');
-    console.log('Generated files:');
-    generatedFiles.forEach(f => console.log(`  - ${f}`));
-    console.log('\nFiles are available in the /docs directory.\n');
-
-    return generatedFiles;
+    console.log('\nDone.\n');
 }
 
-// Run if called directly
 if (require.main === module) {
-    generateDocumentation().catch(err => {
-        console.error('Error generating documentation:', err);
-        process.exit(1);
-    });
+    main().catch(e => { console.error(e); process.exit(1); });
 }
 
-module.exports = { PDFGenerator, generateDocumentation };
+module.exports = { DocumentGenerator };
