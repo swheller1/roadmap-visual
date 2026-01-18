@@ -69,11 +69,13 @@ class PDFGenerator {
     addHeader() {
         const { margin, pageWidth } = this.config;
 
-        // Security classification at top
-        this.doc.setFontSize(10);
-        this.doc.setFont('helvetica', 'bold');
-        this.doc.setTextColor(220, 38, 38); // Red
-        this.doc.text(this.securityClassification, pageWidth / 2, 10, { align: 'center' });
+        // Security classification at top (only if set)
+        if (this.securityClassification) {
+            this.doc.setFontSize(10);
+            this.doc.setFont('helvetica', 'bold');
+            this.doc.setTextColor(220, 38, 38); // Red
+            this.doc.text(this.securityClassification, pageWidth / 2, 10, { align: 'center' });
+        }
 
         // Header line
         this.doc.setDrawColor(0, 51, 102);
@@ -95,11 +97,13 @@ class PDFGenerator {
         this.doc.setTextColor(100, 100, 100);
         this.doc.text(`Page ${this.pageNumber}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
 
-        // Security classification at bottom
-        this.doc.setFontSize(10);
-        this.doc.setFont('helvetica', 'bold');
-        this.doc.setTextColor(220, 38, 38);
-        this.doc.text(this.securityClassification, pageWidth / 2, pageHeight - 8, { align: 'center' });
+        // Security classification at bottom (only if set)
+        if (this.securityClassification) {
+            this.doc.setFontSize(10);
+            this.doc.setFont('helvetica', 'bold');
+            this.doc.setTextColor(220, 38, 38);
+            this.doc.text(this.securityClassification, pageWidth / 2, pageHeight - 8, { align: 'center' });
+        }
     }
 
     newPage() {
@@ -474,7 +478,7 @@ async function generateDocumentation() {
             source: 'SECURITY_AUDIT.md',
             output: 'Roadmap_Visual_Security_Audit.pdf',
             title: 'SECURITY AUDIT REPORT - ROADMAP VISUAL',
-            classification: 'OFFICIAL'
+            classification: ''
         }
     ];
 
