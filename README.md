@@ -38,7 +38,7 @@ This visual is built to meet **Microsoft Power BI certification requirements**:
 | Selection Manager integration | ✅ Implemented |
 | destroy() method | ✅ Implemented |
 | .gitignore file | ✅ Included |
-| tslint.json | ✅ Included |
+| eslint config | ✅ Included |
 
 ### Audit Command
 Run security audit before packaging:
@@ -112,15 +112,19 @@ The Roadmap Visual icon appears in your Visualizations pane.
 ```
 powerbi-visual/
 ├── assets/
-│   └── icon.png          # Visual icon (20x20)
+│   └── icon.png              # Visual icon (20x20)
 ├── src/
-│   └── visual.ts         # Main TypeScript source
+│   ├── visual.ts             # Main visual class (IVisual implementation)
+│   ├── constants.ts          # Centralized layout constants & thresholds
+│   └── services/
+│       ├── dateService.ts    # DST-safe date utilities
+│       └── coordinateEngine.ts # Timeline coordinate calculations
 ├── style/
-│   └── visual.less       # Styles
-├── capabilities.json     # Data roles & mappings
-├── package.json          # Dependencies
-├── pbiviz.json          # Visual manifest
-└── tsconfig.json        # TypeScript config
+│   └── visual.less           # Styles
+├── capabilities.json         # Data roles & mappings
+├── package.json              # Dependencies
+├── pbiviz.json              # Visual manifest
+└── tsconfig.json            # TypeScript config
 ```
 
 ### Configuration Files
@@ -329,7 +333,10 @@ This visual:
 | `pbiviz.json` | Visual manifest |
 | `capabilities.json` | Data roles & settings |
 | `tsconfig.json` | TypeScript configuration |
-| `src/visual.ts` | Main visual code |
+| `src/visual.ts` | Main visual class |
+| `src/constants.ts` | Layout constants & thresholds |
+| `src/services/dateService.ts` | DST-safe date utilities |
+| `src/services/coordinateEngine.ts` | Timeline coordinate math |
 | `style/visual.less` | Styling |
 | `assets/icon.png` | Visual icon |
 
