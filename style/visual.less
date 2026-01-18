@@ -132,6 +132,19 @@
         background: @bg;
     }
 
+    // Focus styles for keyboard accessibility (WCAG 2.4.7)
+    &:focus {
+        outline: 2px solid @accent;
+        outline-offset: -2px;
+        z-index: 5;
+    }
+
+    &:focus-visible {
+        outline: 2px solid @accent;
+        outline-offset: -2px;
+        z-index: 5;
+    }
+
     &.row-parent {
         background: @header;
         cursor: pointer;
@@ -398,6 +411,19 @@
         box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
         z-index: 10;
     }
+
+    // Focus styles for keyboard accessibility (WCAG 2.4.7)
+    &:focus {
+        outline: 2px solid @accent;
+        outline-offset: 2px;
+        z-index: 11;
+    }
+
+    &:focus-visible {
+        outline: 2px solid @accent;
+        outline-offset: 2px;
+        z-index: 11;
+    }
 }
 
 .bar-label {
@@ -422,6 +448,17 @@
 
     &:hover {
         transform: rotate(45deg) scale(1.15);
+    }
+
+    // Focus styles for keyboard accessibility (WCAG 2.4.7)
+    &:focus {
+        outline: 2px solid @accent;
+        outline-offset: 4px;
+    }
+
+    &:focus-visible {
+        outline: 2px solid @accent;
+        outline-offset: 4px;
     }
 }
 
@@ -679,6 +716,11 @@
 
     .bar {
         border: 2px solid @hc-text;
+
+        &:focus, &:focus-visible {
+            outline: 3px solid @hc-accent;
+            outline-offset: 2px;
+        }
     }
 
     .bar-label {
@@ -688,6 +730,18 @@
 
     .milestone {
         border: 2px solid @hc-text;
+
+        &:focus, &:focus-visible {
+            outline: 3px solid @hc-accent;
+            outline-offset: 4px;
+        }
+    }
+
+    .row {
+        &:focus, &:focus-visible {
+            outline: 3px solid @hc-accent;
+            outline-offset: -3px;
+        }
     }
 
     .milestone-label {
