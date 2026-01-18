@@ -472,7 +472,7 @@ async function generateDocumentation() {
             source: 'TEST_REPORT.md',
             output: 'Roadmap_Visual_Test_Report.pdf',
             title: 'ROADMAP VISUAL - TEST REPORT',
-            classification: 'OFFICIAL'
+            classification: ''
         },
         {
             source: 'SECURITY_AUDIT.md',
