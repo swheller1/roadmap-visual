@@ -178,6 +178,33 @@
         }
       }
     },
+    "logo": {
+      "displayName": "Logo",
+      "description": "Add a logo to the top left of the roadmap",
+      "properties": {
+        "imageUrl": {
+          "displayName": "Image URL",
+          "description": "URL to the logo image (PNG, JPG, or SVG)",
+          "type": { "text": true }
+        },
+        "size": {
+          "displayName": "Size",
+          "description": "Logo display size",
+          "type": {
+            "enumeration": [
+              { "value": "small", "displayName": "Small (24px)" },
+              { "value": "medium", "displayName": "Medium (32px)" },
+              { "value": "large", "displayName": "Large (48px)" }
+            ]
+          }
+        },
+        "show": {
+          "displayName": "Show Logo",
+          "description": "Display the logo in the header",
+          "type": { "bool": true }
+        }
+      }
+    },
     "workItemColors": {
       "displayName": "Work Item Colors",
       "description": "Colors for each work item type",

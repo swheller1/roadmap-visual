@@ -50,6 +50,10 @@ interface VisualSettings {
     title: string;
     subtitle: string;
     rowDensity: 'compact' | 'normal' | 'comfortable';
+    // Logo settings
+    logoUrl: string;
+    logoSize: 'small' | 'medium' | 'large';
+    showLogo: boolean;
     // Organization settings
     groupBy: string;
     showHierarchy: boolean;
@@ -139,6 +143,9 @@ export class RoadmapVisual implements IVisual {
             title: "Roadmap",
             subtitle: "Work Items",
             rowDensity: "normal",
+            logoUrl: "",
+            logoSize: "medium",
+            showLogo: true,
             groupBy: "epic",
             showHierarchy: true,
             defaultExpanded: true,
@@ -300,6 +307,15 @@ export class RoadmapVisual implements IVisual {
             this.settings.title = this.sanitizeString(String(objects.general.title || this.settings.title));
             this.settings.subtitle = this.sanitizeString(String(objects.general.subtitle || this.settings.subtitle));
         }
+        // Logo settings
+        if (objects.logo) {
+            this.settings.logoUrl = this.sanitizeUrl(String(objects.logo.imageUrl || ""));
+            const size = String(objects.logo.size || 'medium');
+            if (['small', 'medium', 'large'].includes(size)) {
+                this.settings.logoSize = size as 'small' | 'medium' | 'large';
+            }
+            this.settings.showLogo = objects.logo.show !== false;
+        }
         // Work Item Colors
         if (objects.workItemColors) {
             const getColor = (obj: any): string | undefined => obj?.solid?.color;
@@ -350,8 +366,26 @@ export class RoadmapVisual implements IVisual {
 
         // Header
         const header = this.container.append("div").classed("header", true);
-        header.append("div").classed("title", true).text(this.settings.title);
-        header.append("div").classed("subtitle", true).text(this.settings.subtitle);
+
+        // Add logo if URL is provided and show is enabled
+        if (this.settings.showLogo && this.settings.logoUrl) {
+            const logoSizes = { small: 24, medium: 32, large: 48 };
+            const logoSize = logoSizes[this.settings.logoSize] || 32;
+            header.append("img")
+                .classed("header-logo", true)
+                .attr("src", this.settings.logoUrl)
+                .attr("alt", "Logo")
+                .style("width", `${logoSize}px`)
+                .style("height", `${logoSize}px`)
+                .on("error", function() {
+                    // Hide the image if it fails to load
+                    d3.select(this).style("display", "none");
+                });
+        }
+
+        const headerText = header.append("div").classed("header-text", true);
+        headerText.append("div").classed("title", true).text(this.settings.title);
+        headerText.append("div").classed("subtitle", true).text(this.settings.subtitle);
 
         // Main container - add pdf-mode class for export optimization
         const main = this.container.append("div").classed("main", true).classed("pdf-mode", this.settings.pdfMode);
@@ -955,6 +989,16 @@ export class RoadmapVisual implements IVisual {
 
     private sanitizeString(str: string): string {
         return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;") : "";
+    }
+
+    private sanitizeUrl(url: string): string {
+        if (!url) return "";
+        // Only allow http, https, and data URLs for security
+        const trimmed = url.trim();
+        if (trimmed.startsWith("https://") || trimmed.startsWith("http://") || trimmed.startsWith("data:image/")) {
+            return trimmed;
+        }
+        return "";
     }
 
     private parseDate(value: any): Date | null {
