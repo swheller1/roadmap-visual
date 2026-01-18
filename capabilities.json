@@ -133,6 +133,17 @@
         "subtitle": {
           "displayName": "Subtitle",
           "type": { "text": true }
+        },
+        "rowDensity": {
+          "displayName": "Row Density",
+          "description": "Control row height to fit more or less data vertically",
+          "type": {
+            "enumeration": [
+              { "value": "compact", "displayName": "Compact" },
+              { "value": "normal", "displayName": "Normal" },
+              { "value": "comfortable", "displayName": "Comfortable" }
+            ]
+          }
         }
       }
     },

@@ -49,6 +49,7 @@ interface WorkItem {
 interface VisualSettings {
     title: string;
     subtitle: string;
+    rowDensity: 'compact' | 'normal' | 'comfortable';
     // Organization settings
     groupBy: string;
     showHierarchy: boolean;
@@ -87,8 +88,20 @@ interface RowData {
 
 // Constants
 const TYPES = ['Epic', 'Milestone', 'Feature'];
-const ROW_HEIGHT: { [key: string]: number } = { Epic: 48, Milestone: 40, Feature: 44, GroupHeader: 44 };
-const BAR_HEIGHT: { [key: string]: number } = { Epic: 32, Milestone: 18, Feature: 28 };
+
+// Row heights for different density levels
+const ROW_HEIGHTS: { [density: string]: { [type: string]: number } } = {
+    compact: { Epic: 32, Milestone: 28, Feature: 30, GroupHeader: 30 },
+    normal: { Epic: 48, Milestone: 40, Feature: 44, GroupHeader: 44 },
+    comfortable: { Epic: 56, Milestone: 48, Feature: 52, GroupHeader: 52 }
+};
+
+// Bar heights for different density levels
+const BAR_HEIGHTS: { [density: string]: { [type: string]: number } } = {
+    compact: { Epic: 22, Milestone: 14, Feature: 20 },
+    normal: { Epic: 32, Milestone: 18, Feature: 28 },
+    comfortable: { Epic: 40, Milestone: 22, Feature: 36 }
+};
 
 export class RoadmapVisual implements IVisual {
     private host: IVisualHost;
@@ -125,6 +138,7 @@ export class RoadmapVisual implements IVisual {
         this.settings = {
             title: "Roadmap",
             subtitle: "Work Items",
+            rowDensity: "normal",
             groupBy: "epic",
             showHierarchy: true,
             defaultExpanded: true,
@@ -269,6 +283,10 @@ export class RoadmapVisual implements IVisual {
         if (objects.general) {
             this.settings.title = this.sanitizeString(String(objects.general.title || this.settings.title));
             this.settings.subtitle = this.sanitizeString(String(objects.general.subtitle || this.settings.subtitle));
+            const density = String(objects.general.rowDensity || 'normal');
+            if (['compact', 'normal', 'comfortable'].includes(density)) {
+                this.settings.rowDensity = density as 'compact' | 'normal' | 'comfortable';
+            }
         }
         if (objects.organization) {
             this.settings.groupBy = this.sanitizeString(String(objects.organization.groupBy || "epic"));
@@ -403,6 +421,16 @@ export class RoadmapVisual implements IVisual {
         return baseWidth * this.settings.zoomLevel;
     }
 
+    private getRowHeight(type: string): number {
+        const heights = ROW_HEIGHTS[this.settings.rowDensity] || ROW_HEIGHTS.normal;
+        return heights[type] || heights.Feature;
+    }
+
+    private getBarHeight(type: string): number {
+        const heights = BAR_HEIGHTS[this.settings.rowDensity] || BAR_HEIGHTS.normal;
+        return heights[type] || heights.Feature;
+    }
+
     private buildRows(): RowData[] {
         const rows: RowData[] = [];
         let y = 0;
@@ -424,18 +452,21 @@ export class RoadmapVisual implements IVisual {
             epics.forEach(epic => {
                 const isCollapsed = this.collapsed.has(epic.id) && !this.settings.pdfMode;
                 const children = nonEpicItems.filter(w => w.parentId === epic.id);
-                rows.push({ type: "Epic", data: epic, y, height: ROW_HEIGHT.Epic, collapsed: isCollapsed, isParent: true, childCount: children.length, level: 0 });
-                y += ROW_HEIGHT.Epic;
+                const h = this.getRowHeight("Epic");
+                rows.push({ type: "Epic", data: epic, y, height: h, collapsed: isCollapsed, isParent: true, childCount: children.length, level: 0 });
+                y += h;
                 if (!isCollapsed && this.settings.showHierarchy) {
                     // First show milestones (they're key dates)
                     children.filter(c => c.type === "Milestone").forEach(m => {
-                        rows.push({ type: "Milestone", data: m, y, height: ROW_HEIGHT.Milestone, level: 1 });
-                        y += ROW_HEIGHT.Milestone;
+                        const mh = this.getRowHeight("Milestone");
+                        rows.push({ type: "Milestone", data: m, y, height: mh, level: 1 });
+                        y += mh;
                     });
                     // Then show features
                     children.filter(c => c.type === "Feature").forEach(f => {
-                        rows.push({ type: "Feature", data: f, y, height: ROW_HEIGHT.Feature, level: 1 });
-                        y += ROW_HEIGHT.Feature;
+                        const fh = this.getRowHeight("Feature");
+                        rows.push({ type: "Feature", data: f, y, height: fh, level: 1 });
+                        y += fh;
                     });
                 }
             });
@@ -443,7 +474,7 @@ export class RoadmapVisual implements IVisual {
             // Show orphan items (no parent) if epics are hidden
             if (!this.settings.showEpics) {
                 nonEpicItems.forEach(item => {
-                    const h = ROW_HEIGHT[item.type] || ROW_HEIGHT.Feature;
+                    const h = this.getRowHeight(item.type);
                     rows.push({ type: item.type, data: item, y, height: h, level: 0 });
                     y += h;
                 });
@@ -459,13 +490,14 @@ export class RoadmapVisual implements IVisual {
 
             [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([name, items]) => {
                 const isCollapsed = this.collapsed.has(`grp-${name}`) && !this.settings.pdfMode;
-                rows.push({ type: "GroupHeader", name, y, height: ROW_HEIGHT.GroupHeader, collapsed: isCollapsed, isParent: true, childCount: items.length, level: 0 });
-                y += ROW_HEIGHT.GroupHeader;
+                const gh = this.getRowHeight("GroupHeader");
+                rows.push({ type: "GroupHeader", name, y, height: gh, collapsed: isCollapsed, isParent: true, childCount: items.length, level: 0 });
+                y += gh;
 
                 if (!isCollapsed && this.settings.showHierarchy) {
                     // Sort by type: Epic first, then Milestone, then Feature
                     items.sort((a, b) => TYPES.indexOf(a.type) - TYPES.indexOf(b.type)).forEach(item => {
-                        const h = ROW_HEIGHT[item.type] || ROW_HEIGHT.Feature;
+                        const h = this.getRowHeight(item.type);
                         rows.push({ type: item.type, data: item, y, height: h, level: 1 });
                         y += h;
                     });
@@ -545,7 +577,8 @@ export class RoadmapVisual implements IVisual {
 
         if (row.type === "Milestone") {
             if (!item.targetDate) return;
-            const x = this.daysBetween(this.viewStart, item.targetDate) * dayWidth, size = BAR_HEIGHT.Milestone;
+            const x = this.daysBetween(this.viewStart, item.targetDate) * dayWidth;
+            const size = this.getBarHeight("Milestone");
             const el = rowEl.append("div")
                 .classed("milestone", true)
                 .attr("data-id", item.id)
@@ -561,7 +594,7 @@ export class RoadmapVisual implements IVisual {
             const startX = this.daysBetween(this.viewStart, item.startDate) * dayWidth;
             const endX = this.daysBetween(this.viewStart, item.targetDate) * dayWidth;
             const width = Math.max(endX - startX + dayWidth, 30);
-            const barHeight = BAR_HEIGHT[row.type] || BAR_HEIGHT.Feature;
+            const barHeight = this.getBarHeight(row.type);
             const bar = rowEl.append("div")
                 .classed("bar", true)
                 .attr("data-id", item.id)
