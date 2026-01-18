@@ -176,6 +176,60 @@
           "type": { "bool": true }
         }
       }
+    },
+    "levels": {
+      "displayName": "Levels",
+      "properties": {
+        "showEpics": {
+          "displayName": "Show Epics",
+          "type": { "bool": true }
+        },
+        "showFeatures": {
+          "displayName": "Show Features",
+          "type": { "bool": true }
+        },
+        "showMilestones": {
+          "displayName": "Show Milestones",
+          "type": { "bool": true }
+        }
+      }
+    },
+    "timeScale": {
+      "displayName": "Time Scale",
+      "properties": {
+        "scale": {
+          "displayName": "View Scale",
+          "type": {
+            "enumeration": [
+              { "value": "daily", "displayName": "Daily" },
+              { "value": "weekly", "displayName": "Weekly" },
+              { "value": "monthly", "displayName": "Monthly" },
+              { "value": "annual", "displayName": "Annual" }
+            ]
+          }
+        },
+        "zoomLevel": {
+          "displayName": "Zoom Level",
+          "type": {
+            "enumeration": [
+              { "value": "0.5", "displayName": "50%" },
+              { "value": "1", "displayName": "100%" },
+              { "value": "2", "displayName": "200%" },
+              { "value": "4", "displayName": "400%" }
+            ]
+          }
+        }
+      }
+    },
+    "export": {
+      "displayName": "Export",
+      "properties": {
+        "pdfMode": {
+          "displayName": "PDF-Friendly Mode",
+          "description": "Expand all items and optimize for PDF export",
+          "type": { "bool": true }
+        }
+      }
     }
   },
   "privileges": []

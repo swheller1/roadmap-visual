@@ -181,6 +181,64 @@
     color: @text;
     border-right: 1px solid @border-light;
     box-sizing: border-box;
+
+    &.month-primary {
+        height: 24px;
+        border-bottom: 1px solid @border-light;
+    }
+}
+
+.day-cell {
+    position: absolute;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    color: @text-muted;
+    border-right: 1px solid @border-light;
+    box-sizing: border-box;
+}
+
+.week-cell {
+    position: absolute;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+    font-size: 9px;
+    font-weight: 500;
+    color: @text-secondary;
+    border-right: 1px solid @border-light;
+    box-sizing: border-box;
+}
+
+.year-cell {
+    position: absolute;
+    top: 0;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: @text;
+    border-right: 1px solid @border;
+    border-bottom: 1px solid @border-light;
+    box-sizing: border-box;
+}
+
+.quarter-cell {
+    position: absolute;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: @text-secondary;
+    border-right: 1px solid @border-light;
+    box-sizing: border-box;
 }
 
 .timeline-body {
@@ -203,6 +261,23 @@
 
     &.grid-line-month {
         background: @border;
+    }
+
+    &.grid-line-weekend {
+        background: fade(@border, 50%);
+    }
+
+    &.grid-line-week {
+        background: fade(@border, 70%);
+    }
+
+    &.grid-line-quarter {
+        background: @border;
+    }
+
+    &.grid-line-year {
+        background: darken(@border, 20%);
+        width: 2px;
     }
 }
 
@@ -336,4 +411,50 @@
 
 ::-webkit-scrollbar-track {
     background: transparent;
+}
+
+// PDF-Friendly Mode
+.main.pdf-mode {
+    overflow: visible;
+    height: auto;
+
+    .left-panel,
+    .timeline-panel {
+        overflow: visible;
+    }
+
+    .left-body,
+    .timeline-body {
+        overflow: visible;
+        height: auto;
+    }
+
+    // Disable hover effects for cleaner PDF output
+    .row:hover,
+    .row.row-parent:hover,
+    .row.row-swimlane:hover {
+        background: inherit;
+    }
+
+    .bar:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+    .milestone:hover {
+        transform: rotate(45deg);
+    }
+
+    // Ensure all content is visible
+    .row-title {
+        white-space: normal;
+        overflow: visible;
+    }
+}
+
+// Timeline header adjustments for multi-row headers
+.timeline-header {
+    &.timeline-header-tall {
+        height: 48px;
+    }
 }

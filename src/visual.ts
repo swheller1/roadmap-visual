@@ -52,6 +52,15 @@ interface VisualSettings {
     milestoneColor: string;
     featureColor: string;
     showDependencies: boolean;
+    // Level display settings
+    showEpics: boolean;
+    showFeatures: boolean;
+    showMilestones: boolean;
+    // Time scale settings
+    timeScale: 'daily' | 'weekly' | 'monthly' | 'annual';
+    zoomLevel: number;
+    // Export settings
+    pdfMode: boolean;
 }
 
 interface RowData {
@@ -77,7 +86,6 @@ export class RoadmapVisual implements IVisual {
     private settings: VisualSettings;
     private collapsed: Set<string> = new Set();
     private viewStart: Date = new Date();
-    private zoomLevel: number = 1;
     private selectionManager: ISelectionManager;
 
     constructor(options: VisualConstructorOptions) {
@@ -110,7 +118,13 @@ export class RoadmapVisual implements IVisual {
             epicColor: "#4F46E5",
             milestoneColor: "#DC2626",
             featureColor: "#0891B2",
-            showDependencies: true
+            showDependencies: true,
+            showEpics: true,
+            showFeatures: true,
+            showMilestones: true,
+            timeScale: 'monthly',
+            zoomLevel: 1,
+            pdfMode: false
         };
     }
 
@@ -249,13 +263,37 @@ export class RoadmapVisual implements IVisual {
         if (objects.dependencies) {
             this.settings.showDependencies = Boolean(objects.dependencies.show);
         }
+        if (objects.levels) {
+            this.settings.showEpics = objects.levels.showEpics !== false;
+            this.settings.showFeatures = objects.levels.showFeatures !== false;
+            this.settings.showMilestones = objects.levels.showMilestones !== false;
+        }
+        if (objects.timeScale) {
+            const scale = String(objects.timeScale.scale || 'monthly');
+            if (['daily', 'weekly', 'monthly', 'annual'].includes(scale)) {
+                this.settings.timeScale = scale as 'daily' | 'weekly' | 'monthly' | 'annual';
+            }
+            const zoom = parseFloat(String(objects.timeScale.zoomLevel || '1'));
+            if ([0.5, 1, 2, 4].includes(zoom)) {
+                this.settings.zoomLevel = zoom;
+            }
+        }
+        if (objects.export) {
+            this.settings.pdfMode = Boolean(objects.export.pdfMode);
+        }
     }
 
     private render(width: number, height: number, viewEnd: Date): void {
-        const dayWidth = this.zoomLevel === 0.5 ? 5 : this.zoomLevel === 1 ? 16 : this.zoomLevel === 2 ? 28 : 40;
+        // Calculate day width based on time scale and zoom level
+        const dayWidth = this.calculateDayWidth();
         const totalDays = this.daysBetween(this.viewStart, viewEnd);
         const timelineWidth = totalDays * dayWidth;
         const leftPanelWidth = 280;
+
+        // In PDF mode, expand all items
+        if (this.settings.pdfMode) {
+            this.collapsed.clear();
+        }
 
         const rows = this.buildRows();
         const totalHeight = rows.length > 0 ? rows[rows.length - 1].y + rows[rows.length - 1].height : 0;
@@ -265,24 +303,36 @@ export class RoadmapVisual implements IVisual {
         header.append("div").classed("title", true).text(this.settings.title);
         header.append("div").classed("subtitle", true).text(this.settings.subtitle);
 
-        // Main container
-        const main = this.container.append("div").classed("main", true);
+        // Main container - add pdf-mode class for export optimization
+        const main = this.container.append("div").classed("main", true).classed("pdf-mode", this.settings.pdfMode);
 
         // Left panel
         const left = main.append("div").classed("left-panel", true).style("width", `${leftPanelWidth}px`);
-        left.append("div").classed("left-header", true).text("Work Items");
+        left.append("div").classed("left-header", true).text("WORK ITEMS");
         const leftBody = left.append("div").classed("left-body", true);
+
+        // In PDF mode, show all content without scroll
+        if (this.settings.pdfMode) {
+            leftBody.style("overflow", "visible").style("height", "auto");
+        }
 
         // Timeline panel
         const timeline = main.append("div").classed("timeline-panel", true);
         const timelineHeader = timeline.append("div").classed("timeline-header", true).style("width", `${timelineWidth}px`);
         const timelineBody = timeline.append("div").classed("timeline-body", true);
+
+        // In PDF mode, show all content without scroll
+        if (this.settings.pdfMode) {
+            timelineBody.style("overflow", "visible").style("height", "auto");
+        }
+
         const timelineInner = timelineBody.append("div").classed("timeline-inner", true)
             .style("width", `${timelineWidth}px`)
             .style("height", `${totalHeight}px`);
 
-        this.renderMonthHeaders(timelineHeader, viewEnd, dayWidth);
-        this.renderGrid(timelineInner, totalDays, dayWidth);
+        // Render headers based on time scale
+        this.renderTimeHeaders(timelineHeader, viewEnd, dayWidth);
+        this.renderGrid(timelineInner, totalDays, dayWidth, viewEnd);
         this.renderTodayLine(timelineInner, viewEnd, dayWidth);
 
         rows.forEach(row => {
@@ -290,24 +340,49 @@ export class RoadmapVisual implements IVisual {
             this.renderTimelineRow(timelineInner, row, dayWidth);
         });
 
-        // Sync scroll
-        const leftBodyNode = leftBody.node();
-        const timelineBodyNode = timelineBody.node();
-        if (leftBodyNode && timelineBodyNode) {
-            leftBody.on("scroll", () => { timelineBodyNode.scrollTop = leftBodyNode.scrollTop; });
-            timelineBody.on("scroll", () => { leftBodyNode.scrollTop = timelineBodyNode.scrollTop; });
+        // Sync scroll (disabled in PDF mode)
+        if (!this.settings.pdfMode) {
+            const leftBodyNode = leftBody.node();
+            const timelineBodyNode = timelineBody.node();
+            if (leftBodyNode && timelineBodyNode) {
+                leftBody.on("scroll", () => { timelineBodyNode.scrollTop = leftBodyNode.scrollTop; });
+                timelineBody.on("scroll", () => { leftBodyNode.scrollTop = timelineBodyNode.scrollTop; });
+            }
         }
+    }
+
+    private calculateDayWidth(): number {
+        // Base widths for each time scale
+        const baseWidths: { [key: string]: number } = {
+            daily: 24,
+            weekly: 6,
+            monthly: 2,
+            annual: 0.5
+        };
+        const baseWidth = baseWidths[this.settings.timeScale] || baseWidths.monthly;
+        return baseWidth * this.settings.zoomLevel;
     }
 
     private buildRows(): RowData[] {
         const rows: RowData[] = [];
         let y = 0;
 
+        // Filter work items by level visibility
+        const visibleItems = this.workItems.filter(w => {
+            if (w.type === 'Epic' && !this.settings.showEpics) return false;
+            if (w.type === 'Feature' && !this.settings.showFeatures) return false;
+            if (w.type === 'Milestone' && !this.settings.showMilestones) return false;
+            return true;
+        });
+
         if (!this.settings.showSwimlanes || this.settings.swimlaneGroupBy === "none") {
-            const epics = this.workItems.filter(w => w.type === "Epic");
+            const epics = visibleItems.filter(w => w.type === "Epic");
+            const nonEpicItems = visibleItems.filter(w => w.type !== "Epic");
+
+            // Show epics with children
             epics.forEach(epic => {
-                const isCollapsed = this.collapsed.has(epic.id);
-                const children = this.workItems.filter(w => w.parentId === epic.id);
+                const isCollapsed = this.collapsed.has(epic.id) && !this.settings.pdfMode;
+                const children = nonEpicItems.filter(w => w.parentId === epic.id);
                 rows.push({ type: "Epic", data: epic, y, height: ROW_HEIGHT.Epic, collapsed: isCollapsed, isParent: true, childCount: children.length });
                 y += ROW_HEIGHT.Epic;
                 if (!isCollapsed) {
@@ -315,11 +390,20 @@ export class RoadmapVisual implements IVisual {
                     children.filter(c => c.type === "Feature").forEach(f => { rows.push({ type: "Feature", data: f, y, height: ROW_HEIGHT.Feature }); y += ROW_HEIGHT.Feature; });
                 }
             });
+
+            // If epics are hidden, show features/milestones directly
+            if (!this.settings.showEpics) {
+                nonEpicItems.forEach(item => {
+                    const h = ROW_HEIGHT[item.type] || ROW_HEIGHT.Feature;
+                    rows.push({ type: item.type, data: item, y, height: h });
+                    y += h;
+                });
+            }
         } else {
             const groups = new Map<string, WorkItem[]>();
-            this.workItems.forEach(item => { const key = this.getSwimlaneKey(item); if (!groups.has(key)) groups.set(key, []); groups.get(key)!.push(item); });
+            visibleItems.forEach(item => { const key = this.getSwimlaneKey(item); if (!groups.has(key)) groups.set(key, []); groups.get(key)!.push(item); });
             [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([name, items]) => {
-                const isCollapsed = this.collapsed.has(`sw-${name}`);
+                const isCollapsed = this.collapsed.has(`sw-${name}`) && !this.settings.pdfMode;
                 rows.push({ type: "Swimlane", name, y, height: ROW_HEIGHT.SwimlaneHeader, collapsed: isCollapsed, childCount: items.length });
                 y += ROW_HEIGHT.SwimlaneHeader;
                 if (!isCollapsed) {
@@ -384,7 +468,82 @@ export class RoadmapVisual implements IVisual {
             .on("contextmenu", (event: MouseEvent) => { event.preventDefault(); event.stopPropagation(); if (item.selectionId) this.selectionManager.showContextMenu(item.selectionId, { x: event.clientX, y: event.clientY }); });
     }
 
-    private renderMonthHeaders(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
+    private renderTimeHeaders(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
+        switch (this.settings.timeScale) {
+            case 'daily':
+                this.renderDailyHeaders(container, viewEnd, dayWidth);
+                break;
+            case 'weekly':
+                this.renderWeeklyHeaders(container, viewEnd, dayWidth);
+                break;
+            case 'monthly':
+                this.renderMonthlyHeaders(container, viewEnd, dayWidth);
+                break;
+            case 'annual':
+                this.renderAnnualHeaders(container, viewEnd, dayWidth);
+                break;
+            default:
+                this.renderMonthlyHeaders(container, viewEnd, dayWidth);
+        }
+    }
+
+    private renderDailyHeaders(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
+        // Render month row first
+        let current = new Date(this.viewStart);
+        while (current <= viewEnd) {
+            if (current.getDate() === 1 || current.getTime() === this.viewStart.getTime()) {
+                const x = this.daysBetween(this.viewStart, current) * dayWidth;
+                const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+                const width = this.daysBetween(current, monthEnd > viewEnd ? viewEnd : monthEnd) * dayWidth + dayWidth;
+                container.append("div").classed("month-cell", true).classed("month-primary", true).style("left", `${x}px`).style("width", `${width}px`).text(current.toLocaleDateString("en-AU", { month: "short", year: "numeric" }));
+            }
+            current = this.addDays(current, 1);
+        }
+        // Render day labels if zoomed in enough
+        if (dayWidth >= 20) {
+            current = new Date(this.viewStart);
+            let i = 0;
+            while (current <= viewEnd) {
+                const x = i * dayWidth;
+                const dayEl = container.append("div").classed("day-cell", true).style("left", `${x}px`).style("width", `${dayWidth}px`).style("top", "28px");
+                dayEl.text(current.getDate().toString());
+                current = this.addDays(current, 1);
+                i++;
+            }
+        }
+    }
+
+    private renderWeeklyHeaders(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
+        // Render month row first
+        let current = new Date(this.viewStart);
+        while (current <= viewEnd) {
+            if (current.getDate() === 1 || current.getTime() === this.viewStart.getTime()) {
+                const x = this.daysBetween(this.viewStart, current) * dayWidth;
+                const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
+                const width = this.daysBetween(current, monthEnd > viewEnd ? viewEnd : monthEnd) * dayWidth + dayWidth;
+                container.append("div").classed("month-cell", true).classed("month-primary", true).style("left", `${x}px`).style("width", `${width}px`).text(current.toLocaleDateString("en-AU", { month: "short", year: "numeric" }));
+            }
+            current = this.addDays(current, 1);
+        }
+        // Render week labels
+        current = new Date(this.viewStart);
+        // Move to Monday
+        const dayOfWeek = current.getDay();
+        const daysToMonday = dayOfWeek === 0 ? 1 : (dayOfWeek === 1 ? 0 : 8 - dayOfWeek);
+        current = this.addDays(current, daysToMonday);
+
+        while (current <= viewEnd) {
+            const x = this.daysBetween(this.viewStart, current) * dayWidth;
+            const weekEnd = this.addDays(current, 6);
+            const effectiveEnd = weekEnd > viewEnd ? viewEnd : weekEnd;
+            const width = this.daysBetween(current, effectiveEnd) * dayWidth + dayWidth;
+            const weekNum = this.getWeekNumber(current);
+            container.append("div").classed("week-cell", true).style("left", `${x}px`).style("width", `${width}px`).style("top", "28px").text(`W${weekNum}`);
+            current = this.addDays(current, 7);
+        }
+    }
+
+    private renderMonthlyHeaders(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
         let current = new Date(this.viewStart);
         while (current <= viewEnd) {
             if (current.getDate() === 1 || current.getTime() === this.viewStart.getTime()) {
@@ -397,10 +556,92 @@ export class RoadmapVisual implements IVisual {
         }
     }
 
-    private renderGrid(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, totalDays: number, dayWidth: number): void {
-        for (let i = 0; i < totalDays; i++) {
-            const date = this.addDays(this.viewStart, i);
-            container.append("div").classed("grid-line", true).classed("grid-line-month", date.getDate() === 1).style("left", `${i * dayWidth}px`);
+    private renderAnnualHeaders(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
+        // Render year row
+        let current = new Date(this.viewStart);
+        let currentYear = current.getFullYear();
+        let yearStartX = 0;
+
+        while (current <= viewEnd) {
+            if (current.getFullYear() !== currentYear) {
+                // Render previous year
+                const width = this.daysBetween(this.viewStart, current) * dayWidth - yearStartX;
+                container.append("div").classed("year-cell", true).style("left", `${yearStartX}px`).style("width", `${width}px`).text(String(currentYear));
+                yearStartX = this.daysBetween(this.viewStart, current) * dayWidth;
+                currentYear = current.getFullYear();
+            }
+            current = this.addDays(current, 1);
+        }
+        // Render last year
+        const totalWidth = this.daysBetween(this.viewStart, viewEnd) * dayWidth + dayWidth;
+        container.append("div").classed("year-cell", true).style("left", `${yearStartX}px`).style("width", `${totalWidth - yearStartX}px`).text(String(currentYear));
+
+        // Render quarter labels
+        current = new Date(this.viewStart);
+        while (current <= viewEnd) {
+            const quarter = Math.floor(current.getMonth() / 3) + 1;
+            const quarterStart = new Date(current.getFullYear(), (quarter - 1) * 3, 1);
+            if (current.getTime() === quarterStart.getTime() || (current.getMonth() % 3 === 0 && current.getDate() === 1) || current.getTime() === this.viewStart.getTime()) {
+                const x = this.daysBetween(this.viewStart, current) * dayWidth;
+                const quarterEnd = new Date(current.getFullYear(), quarter * 3, 0);
+                const effectiveEnd = quarterEnd > viewEnd ? viewEnd : quarterEnd;
+                const width = this.daysBetween(current, effectiveEnd) * dayWidth + dayWidth;
+                container.append("div").classed("quarter-cell", true).style("left", `${x}px`).style("width", `${width}px`).style("top", "28px").text(`Q${quarter}`);
+            }
+            current = this.addDays(current, 1);
+        }
+    }
+
+    private getWeekNumber(date: Date): number {
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    }
+
+    private renderGrid(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, totalDays: number, dayWidth: number, viewEnd: Date): void {
+        switch (this.settings.timeScale) {
+            case 'daily':
+                // Grid line per day
+                for (let i = 0; i < totalDays; i++) {
+                    const date = this.addDays(this.viewStart, i);
+                    const isMonth = date.getDate() === 1;
+                    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                    container.append("div").classed("grid-line", true).classed("grid-line-month", isMonth).classed("grid-line-weekend", isWeekend).style("left", `${i * dayWidth}px`);
+                }
+                break;
+            case 'weekly':
+                // Grid line per week (on Mondays)
+                for (let i = 0; i < totalDays; i++) {
+                    const date = this.addDays(this.viewStart, i);
+                    const isMonth = date.getDate() === 1;
+                    const isMonday = date.getDay() === 1;
+                    if (isMonth || isMonday) {
+                        container.append("div").classed("grid-line", true).classed("grid-line-month", isMonth).classed("grid-line-week", isMonday && !isMonth).style("left", `${i * dayWidth}px`);
+                    }
+                }
+                break;
+            case 'monthly':
+                // Grid line per month
+                for (let i = 0; i < totalDays; i++) {
+                    const date = this.addDays(this.viewStart, i);
+                    if (date.getDate() === 1) {
+                        container.append("div").classed("grid-line", true).classed("grid-line-month", true).style("left", `${i * dayWidth}px`);
+                    }
+                }
+                break;
+            case 'annual':
+                // Grid lines per quarter/year
+                for (let i = 0; i < totalDays; i++) {
+                    const date = this.addDays(this.viewStart, i);
+                    const isYear = date.getMonth() === 0 && date.getDate() === 1;
+                    const isQuarter = date.getDate() === 1 && date.getMonth() % 3 === 0;
+                    if (isYear || isQuarter) {
+                        container.append("div").classed("grid-line", true).classed("grid-line-year", isYear).classed("grid-line-quarter", isQuarter && !isYear).style("left", `${i * dayWidth}px`);
+                    }
+                }
+                break;
         }
     }
 
