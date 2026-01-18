@@ -245,10 +245,11 @@
           "displayName": "View Scale",
           "type": {
             "enumeration": [
-              { "value": "daily", "displayName": "Daily" },
-              { "value": "weekly", "displayName": "Weekly" },
-              { "value": "monthly", "displayName": "Monthly" },
-              { "value": "annual", "displayName": "Annual" }
+              { "value": "daily", "displayName": "Day" },
+              { "value": "weekly", "displayName": "Week" },
+              { "value": "monthly", "displayName": "Month" },
+              { "value": "annual", "displayName": "Year" },
+              { "value": "multiYear", "displayName": "Multi Year" }
             ]
           }
         },

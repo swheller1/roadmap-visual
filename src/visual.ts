@@ -68,7 +68,7 @@ interface VisualSettings {
     showFeatures: boolean;
     showMilestones: boolean;
     // Time scale settings
-    timeScale: 'daily' | 'weekly' | 'monthly' | 'annual';
+    timeScale: 'daily' | 'weekly' | 'monthly' | 'annual' | 'multiYear';
     zoomLevel: number;
     // Export settings
     pdfMode: boolean;
@@ -313,8 +313,8 @@ export class RoadmapVisual implements IVisual {
         }
         if (objects.timeScale) {
             const scale = String(objects.timeScale.scale || 'monthly');
-            if (['daily', 'weekly', 'monthly', 'annual'].includes(scale)) {
-                this.settings.timeScale = scale as 'daily' | 'weekly' | 'monthly' | 'annual';
+            if (['daily', 'weekly', 'monthly', 'annual', 'multiYear'].includes(scale)) {
+                this.settings.timeScale = scale as 'daily' | 'weekly' | 'monthly' | 'annual' | 'multiYear';
             }
             const zoom = parseFloat(String(objects.timeScale.zoomLevel || '1'));
             if ([0.5, 1, 2, 4].includes(zoom)) {
@@ -410,12 +410,13 @@ export class RoadmapVisual implements IVisual {
     }
 
     private calculateDayWidth(): number {
-        // Base widths for each time scale
+        // Base widths for each time scale (pixels per day)
         const baseWidths: { [key: string]: number } = {
             daily: 24,
             weekly: 6,
             monthly: 2,
-            annual: 0.5
+            annual: 0.5,
+            multiYear: 0.15
         };
         const baseWidth = baseWidths[this.settings.timeScale] || baseWidths.monthly;
         return baseWidth * this.settings.zoomLevel;
@@ -741,6 +742,9 @@ export class RoadmapVisual implements IVisual {
             case 'annual':
                 this.renderAnnualHeaders(container, viewEnd, dayWidth);
                 break;
+            case 'multiYear':
+                this.renderMultiYearHeaders(container, viewEnd, dayWidth);
+                break;
             default:
                 this.renderMonthlyHeaders(container, viewEnd, dayWidth);
         }
@@ -836,6 +840,25 @@ export class RoadmapVisual implements IVisual {
         }
     }
 
+    private renderMultiYearHeaders(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
+        // Render year headers only (very compact for multi-year view)
+        let current = new Date(this.viewStart);
+        let currentYear = current.getFullYear();
+        let yearStartX = 0;
+        while (current <= viewEnd) {
+            if (current.getFullYear() !== currentYear) {
+                const width = this.daysBetween(this.viewStart, current) * dayWidth - yearStartX;
+                container.append("div").classed("year-cell", true).classed("year-cell-multi", true).style("left", `${yearStartX}px`).style("width", `${width}px`).style("height", "36px").text(String(currentYear));
+                yearStartX = this.daysBetween(this.viewStart, current) * dayWidth;
+                currentYear = current.getFullYear();
+            }
+            current = this.addDays(current, 1);
+        }
+        // Render last year
+        const totalWidth = this.daysBetween(this.viewStart, viewEnd) * dayWidth + dayWidth;
+        container.append("div").classed("year-cell", true).classed("year-cell-multi", true).style("left", `${yearStartX}px`).style("width", `${totalWidth - yearStartX}px`).style("height", "36px").text(String(currentYear));
+    }
+
     private getWeekNumber(date: Date): number {
         const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
         const dayNum = d.getUTCDay() || 7;
@@ -879,6 +902,16 @@ export class RoadmapVisual implements IVisual {
                     const isQuarter = date.getDate() === 1 && date.getMonth() % 3 === 0;
                     if (isYear || isQuarter) {
                         container.append("div").classed("grid-line", true).classed("grid-line-year", isYear).classed("grid-line-quarter", isQuarter && !isYear).style("left", `${i * dayWidth}px`);
+                    }
+                }
+                break;
+            case 'multiYear':
+                // Grid lines only at year boundaries for multi-year view
+                for (let i = 0; i < totalDays; i++) {
+                    const date = this.addDays(this.viewStart, i);
+                    const isYear = date.getMonth() === 0 && date.getDate() === 1;
+                    if (isYear) {
+                        container.append("div").classed("grid-line", true).classed("grid-line-year", true).style("left", `${i * dayWidth}px`);
                     }
                 }
                 break;
