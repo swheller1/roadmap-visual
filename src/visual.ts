@@ -30,6 +30,32 @@ import html2canvas from "html2canvas";
 
 import "./../style/visual.less";
 
+// Import extracted modules
+import { DateService } from "./services/dateService";
+import { CoordinateEngine, RowBounds } from "./services/coordinateEngine";
+import {
+    VISUAL_VERSION,
+    WORK_ITEM_TYPES,
+    LAYOUT,
+    LOGO_SIZES,
+    ROW_HEIGHTS,
+    BAR_HEIGHTS,
+    DAY_WIDTHS,
+    TIME_SCALES,
+    ZOOM_LEVELS,
+    ROW_DENSITIES,
+    MILESTONE_LABEL_POSITIONS,
+    TIMELINE_PADDING,
+    OCCLUSION,
+    DEPENDENCY_LINES,
+    DEFAULT_COLORS,
+    PDF_EXPORT,
+    TimeScale,
+    RowDensity,
+    MilestoneLabelPosition,
+    LogoSize,
+} from "./constants";
+
 // Interfaces
 interface WorkItem {
     id: string;
@@ -100,23 +126,8 @@ interface RowData {
     level?: number;
 }
 
-// Constants
-const TYPES = ["Epic", "Milestone", "Feature"];
-const VISUAL_VERSION = "1.0.0.0";
-
-// Row heights for different density levels
-const ROW_HEIGHTS: { [density: string]: { [type: string]: number } } = {
-    compact: { Epic: 32, Milestone: 28, Feature: 30, GroupHeader: 30 },
-    normal: { Epic: 48, Milestone: 40, Feature: 44, GroupHeader: 44 },
-    comfortable: { Epic: 56, Milestone: 48, Feature: 52, GroupHeader: 52 }
-};
-
-// Bar heights for different density levels
-const BAR_HEIGHTS: { [density: string]: { [type: string]: number } } = {
-    compact: { Epic: 22, Milestone: 14, Feature: 20 },
-    normal: { Epic: 32, Milestone: 18, Feature: 28 },
-    comfortable: { Epic: 40, Milestone: 22, Feature: 36 }
-};
+// Local alias for backward compatibility
+const TYPES = [...WORK_ITEM_TYPES];
 
 export class RoadmapVisual implements IVisual {
     private host: IVisualHost;
@@ -125,8 +136,20 @@ export class RoadmapVisual implements IVisual {
     private settings: VisualSettings;
     private collapsed: Set<string> = new Set();
     private viewStart: Date = new Date();
+    private viewEnd: Date = new Date();
     private selectionManager: ISelectionManager;
     private rowPositions: Map<string, { y: number; height: number }> = new Map();
+
+    // Coordinate engine for timeline calculations
+    private coordinateEngine: CoordinateEngine | null = null;
+
+    // Occlusion culling state
+    private currentScrollTop: number = 0;
+    private currentScrollLeft: number = 0;
+    private viewportHeight: number = 0;
+    private viewportWidth: number = 0;
+    private allRows: RowData[] = [];
+    private renderedRowIds: Set<string> = new Set();
 
     constructor(options: VisualConstructorOptions) {
         this.host = options.host;
@@ -161,16 +184,16 @@ export class RoadmapVisual implements IVisual {
             groupBy: "epic",
             showHierarchy: true,
             defaultExpanded: true,
-            epicColor: "#4F46E5",
-            milestoneColor: "#DC2626",
-            featureColor: "#0891B2",
+            epicColor: DEFAULT_COLORS.epic,
+            milestoneColor: DEFAULT_COLORS.milestone,
+            featureColor: DEFAULT_COLORS.feature,
             isHighContrast: false,
             milestoneLabelPosition: "right",
             milestoneShowDate: false,
             showDependencies: false,
             showParentChild: true,
             showPredecessors: true,
-            dependencyLineColor: "#94A3B8",
+            dependencyLineColor: DEFAULT_COLORS.dependencyLine,
             showEpics: true,
             showFeatures: true,
             showMilestones: true,
@@ -222,13 +245,26 @@ export class RoadmapVisual implements IVisual {
                 : new Date();
             const maxDate = dates.length > 0
                 ? new Date(Math.max(...dates.map(d => d.getTime())))
-                : this.addDays(new Date(), 90);
+                : DateService.addDays(new Date(), TIMELINE_PADDING.DEFAULT_SPAN);
 
-            this.viewStart = this.addDays(minDate, -14);
-            const viewEnd = this.addDays(maxDate, 28);
+            this.viewStart = DateService.addDays(minDate, -TIMELINE_PADDING.BEFORE);
+            this.viewEnd = DateService.addDays(maxDate, TIMELINE_PADDING.AFTER);
+
+            // Initialize coordinate engine
+            this.coordinateEngine = new CoordinateEngine({
+                viewStart: this.viewStart,
+                viewEnd: this.viewEnd,
+                timeScale: this.settings.timeScale as TimeScale,
+                zoomLevel: this.settings.zoomLevel as 0.5 | 1 | 2 | 4,
+                leftPanelWidth: LAYOUT.LEFT_PANEL_WIDTH,
+            });
+
+            // Store viewport dimensions for occlusion culling
+            this.viewportHeight = options.viewport.height;
+            this.viewportWidth = options.viewport.width;
 
             // Render visual
-            this.render(options.viewport.width, options.viewport.height, viewEnd);
+            this.render(options.viewport.width, options.viewport.height, this.viewEnd);
 
             // Signal render finished - REQUIRED FOR CERTIFICATION
             this.host.eventService.renderingFinished(options);
@@ -288,8 +324,8 @@ export class RoadmapVisual implements IVisual {
                 title: this.sanitizeString(String(titleCol.values[i] || "")),
                 type,
                 state: this.sanitizeString(String(stateCol?.values[i] || "New")),
-                startDate: this.parseDate(startCol?.values[i]),
-                targetDate: this.parseDate(targetCol?.values[i]),
+                startDate: DateService.parseDate(startCol?.values[i] as string | number | Date | null | undefined),
+                targetDate: DateService.parseDate(targetCol?.values[i] as string | number | Date | null | undefined),
                 parentId: parentVal ? `E-${parentVal}` : null,
                 predecessorId: predecessorVal ? String(predecessorVal) : null,
                 areaPath: this.sanitizeString(String(areaCol?.values[i] || "")),
@@ -309,15 +345,15 @@ export class RoadmapVisual implements IVisual {
         // Display settings (View Scale, Row Density, Zoom, Drag Pan)
         if (objects.display) {
             const scale = String(objects.display.viewScale || "monthly");
-            if (["daily", "weekly", "monthly", "annual", "multiYear"].includes(scale)) {
-                this.settings.timeScale = scale as "daily" | "weekly" | "monthly" | "annual" | "multiYear";
+            if ((TIME_SCALES as readonly string[]).includes(scale)) {
+                this.settings.timeScale = scale as TimeScale;
             }
             const density = String(objects.display.rowDensity || "normal");
-            if (["compact", "normal", "comfortable"].includes(density)) {
-                this.settings.rowDensity = density as "compact" | "normal" | "comfortable";
+            if ((ROW_DENSITIES as readonly string[]).includes(density)) {
+                this.settings.rowDensity = density as RowDensity;
             }
             const zoom = parseFloat(String(objects.display.zoomLevel || "1"));
-            if ([0.5, 1, 2, 4].includes(zoom)) {
+            if ((ZOOM_LEVELS as readonly number[]).includes(zoom)) {
                 this.settings.zoomLevel = zoom;
             }
             this.settings.enableDragPan = objects.display.enableDragPan !== false;
@@ -331,8 +367,8 @@ export class RoadmapVisual implements IVisual {
         if (objects.logo) {
             this.settings.logoUrl = this.sanitizeUrl(String(objects.logo.imageUrl || ""));
             const size = String(objects.logo.size || "medium");
-            if (["small", "medium", "large"].includes(size)) {
-                this.settings.logoSize = size as "small" | "medium" | "large";
+            if (size in LOGO_SIZES) {
+                this.settings.logoSize = size as LogoSize;
             }
             this.settings.showLogo = objects.logo.show !== false;
         }
@@ -350,8 +386,8 @@ export class RoadmapVisual implements IVisual {
         // Milestone settings
         if (objects.milestones) {
             const labelPos = String(objects.milestones.labelPosition || "right");
-            if (["left", "right", "none"].includes(labelPos)) {
-                this.settings.milestoneLabelPosition = labelPos as "left" | "right" | "none";
+            if ((MILESTONE_LABEL_POSITIONS as readonly string[]).includes(labelPos)) {
+                this.settings.milestoneLabelPosition = labelPos as MilestoneLabelPosition;
             }
             this.settings.milestoneShowDate = Boolean(objects.milestones.showDate);
         }
@@ -386,11 +422,21 @@ export class RoadmapVisual implements IVisual {
     }
 
     private render(width: number, height: number, viewEnd: Date): void {
-        // Calculate day width based on time scale and zoom level
-        const dayWidth = this.calculateDayWidth();
-        const totalDays = this.daysBetween(this.viewStart, viewEnd);
-        const timelineWidth = totalDays * dayWidth;
-        const leftPanelWidth = 280;
+        // Use coordinate engine for calculations
+        if (!this.coordinateEngine) {
+            this.coordinateEngine = new CoordinateEngine({
+                viewStart: this.viewStart,
+                viewEnd,
+                timeScale: this.settings.timeScale as TimeScale,
+                zoomLevel: this.settings.zoomLevel as 0.5 | 1 | 2 | 4,
+                leftPanelWidth: LAYOUT.LEFT_PANEL_WIDTH,
+            });
+        }
+
+        const dayWidth = this.coordinateEngine.dayWidth;
+        const totalDays = this.coordinateEngine.totalDays;
+        const timelineWidth = this.coordinateEngine.timelineWidth;
+        const leftPanelWidth = LAYOUT.LEFT_PANEL_WIDTH;
 
         // In PDF mode, expand all items
         if (this.settings.pdfMode) {
@@ -405,8 +451,7 @@ export class RoadmapVisual implements IVisual {
 
         // Add logo if URL is provided and show is enabled
         if (this.settings.showLogo && this.settings.logoUrl) {
-            const logoSizes = { small: 24, medium: 32, large: 48 };
-            const logoSize = logoSizes[this.settings.logoSize] || 32;
+            const logoSize = LOGO_SIZES[this.settings.logoSize] || LOGO_SIZES.medium;
             header.append("img")
                 .classed("header-logo", true)
                 .attr("src", this.settings.logoUrl)
@@ -463,14 +508,36 @@ export class RoadmapVisual implements IVisual {
         this.renderGrid(timelineInner, totalDays, dayWidth, viewEnd);
         this.renderTodayLine(timelineInner, viewEnd, dayWidth);
 
-        // Render rows and store positions
-        rows.forEach(row => {
-            this.renderLeftRow(leftBody, row);
-            this.renderTimelineRow(timelineInner, row, dayWidth);
-            if (row.data) {
-                this.rowPositions.set(row.data.id, { y: row.y, height: row.height });
+        // Store all rows for occlusion culling
+        this.allRows = rows;
+        this.renderedRowIds.clear();
+
+        // Calculate which rows are visible (occlusion culling)
+        const shouldCull = rows.length >= OCCLUSION.ENABLE_THRESHOLD && !this.settings.pdfMode;
+        const visibleRowBounds = shouldCull
+            ? this.coordinateEngine!.calculateVisibleRows(
+                rows.map(r => ({ y: r.y, height: r.height })),
+                this.currentScrollTop,
+                height - 100, // Approximate viewport height (minus header)
+                rows.length
+            )
+            : rows.map((_, i) => ({ index: i, y: rows[i].y, height: rows[i].height, isVisible: true }));
+
+        // Render only visible rows (or all if below threshold)
+        visibleRowBounds.forEach(bounds => {
+            if (bounds.isVisible) {
+                const row = rows[bounds.index];
+                this.renderLeftRow(leftBody, row);
+                this.renderTimelineRow(timelineInner, row, dayWidth);
+                if (row.data) {
+                    this.rowPositions.set(row.data.id, { y: row.y, height: row.height });
+                    this.renderedRowIds.add(row.data.id);
+                }
             }
         });
+
+        // Log culling stats in debug mode (commented out for production)
+        // console.log(`Occlusion culling: ${visibleRowBounds.filter(b => b.isVisible).length}/${rows.length} rows rendered`);
 
         // Render dependency lines if enabled
         if (this.settings.showDependencies) {
@@ -488,10 +555,20 @@ export class RoadmapVisual implements IVisual {
             const timelineBodyNode = timelineBody.node();
             const timelineHeaderWrapperNode = timelineHeaderWrapper.node();
             if (leftBodyNode && timelineBodyNode && timelineHeaderWrapperNode) {
-                leftBody.on("scroll", () => { timelineBodyNode.scrollTop = leftBodyNode.scrollTop; });
+                // Track scroll position for occlusion culling
+                const updateScrollPosition = () => {
+                    this.currentScrollTop = timelineBodyNode.scrollTop;
+                    this.currentScrollLeft = timelineBodyNode.scrollLeft;
+                };
+
+                leftBody.on("scroll", () => {
+                    timelineBodyNode.scrollTop = leftBodyNode.scrollTop;
+                    updateScrollPosition();
+                });
                 timelineBody.on("scroll", () => {
                     leftBodyNode.scrollTop = timelineBodyNode.scrollTop;
                     timelineHeaderWrapperNode.scrollLeft = timelineBodyNode.scrollLeft;
+                    updateScrollPosition();
                 });
 
                 // Drag-to-pan functionality
@@ -540,15 +617,8 @@ export class RoadmapVisual implements IVisual {
     }
 
     private calculateDayWidth(): number {
-        // Base widths for each time scale (pixels per day)
-        const baseWidths: { [key: string]: number } = {
-            daily: 24,
-            weekly: 6,
-            monthly: 2,
-            annual: 0.5,
-            multiYear: 0.15
-        };
-        const baseWidth = baseWidths[this.settings.timeScale] || baseWidths.monthly;
+        // Use constants from imported DAY_WIDTHS
+        const baseWidth = DAY_WIDTHS[this.settings.timeScale as TimeScale] || DAY_WIDTHS.monthly;
         return baseWidth * this.settings.zoomLevel;
     }
 
@@ -627,7 +697,7 @@ export class RoadmapVisual implements IVisual {
 
                 if (!isCollapsed && this.settings.showHierarchy) {
                     // Sort by type: Epic first, then Milestone, then Feature
-                    items.sort((a, b) => TYPES.indexOf(a.type) - TYPES.indexOf(b.type)).forEach(item => {
+                    items.sort((a, b) => TYPES.indexOf(a.type as typeof TYPES[number]) - TYPES.indexOf(b.type as typeof TYPES[number])).forEach(item => {
                         const h = this.getRowHeight(item.type);
                         rows.push({ type: item.type, data: item, y, height: h, level: 1 });
                         y += h;
@@ -658,14 +728,14 @@ export class RoadmapVisual implements IVisual {
     }
 
     private renderLeftRow(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, row: RowData): void {
-        const indent = (row.level || 0) * 16;
+        const indent = (row.level || 0) * LAYOUT.INDENT_PER_LEVEL;
         const rowEl = container.append("div")
             .classed("row", true)
             .classed("row-parent", row.isParent || false)
             .classed("row-group-header", row.type === "GroupHeader")
             .classed("row-child", (row.level || 0) > 0)
             .style("height", `${row.height}px`)
-            .style("padding-left", `${10 + indent}px`);
+            .style("padding-left", `${LAYOUT.ROW_PADDING + indent}px`);
 
         if (row.type === "GroupHeader") {
             rowEl.append("span").classed("row-chevron", true).text(row.collapsed ? "▶" : "▼");
@@ -708,7 +778,7 @@ export class RoadmapVisual implements IVisual {
 
         if (row.type === "Milestone") {
             if (!item.targetDate) return;
-            const x = this.daysBetween(this.viewStart, item.targetDate) * dayWidth;
+            const x = DateService.daysBetween(this.viewStart, item.targetDate) * dayWidth;
             const size = this.getBarHeight("Milestone");
 
             // Create a container for milestone and its label
@@ -741,20 +811,20 @@ export class RoadmapVisual implements IVisual {
             if (this.settings.milestoneLabelPosition !== "none") {
                 let labelText = `${item.workItemId}: ${item.title}`;
                 if (this.settings.milestoneShowDate) {
-                    const dateStr = item.targetDate.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+                    const dateStr = DateService.formatAU(item.targetDate, { day: "numeric", month: "short" });
                     labelText = `${dateStr} - ${labelText}`;
                 }
                 milestoneContainer.append("span")
                     .classed("milestone-label", true)
-                    .style("margin-left", this.settings.milestoneLabelPosition === "right" ? "6px" : "0")
-                    .style("margin-right", this.settings.milestoneLabelPosition === "left" ? "6px" : "0")
+                    .style("margin-left", this.settings.milestoneLabelPosition === "right" ? `${LAYOUT.MILESTONE_LABEL_MARGIN}px` : "0")
+                    .style("margin-right", this.settings.milestoneLabelPosition === "left" ? `${LAYOUT.MILESTONE_LABEL_MARGIN}px` : "0")
                     .text(labelText);
             }
         } else {
             if (!item.startDate || !item.targetDate) return;
-            const startX = this.daysBetween(this.viewStart, item.startDate) * dayWidth;
-            const endX = this.daysBetween(this.viewStart, item.targetDate) * dayWidth;
-            const width = Math.max(endX - startX + dayWidth, 30);
+            const startX = DateService.daysBetween(this.viewStart, item.startDate) * dayWidth;
+            const endX = DateService.daysBetween(this.viewStart, item.targetDate) * dayWidth;
+            const width = Math.max(endX - startX + dayWidth, LAYOUT.MIN_BAR_WIDTH);
             const barHeight = this.getBarHeight(row.type);
             const bar = rowEl.append("div")
                 .classed("bar", true)
@@ -765,7 +835,7 @@ export class RoadmapVisual implements IVisual {
                 .style("top", `${(row.height - barHeight) / 2}px`)
                 .style("background", color)
                 .attr("title", `${item.workItemId}: ${item.title}`);
-            if (width > 50) bar.append("span").classed("bar-label", true).text(`${item.workItemId} · ${item.title}`);
+            if (width > LAYOUT.MIN_BAR_WIDTH_FOR_LABEL) bar.append("span").classed("bar-label", true).text(`${item.workItemId} · ${item.title}`);
             this.addBarInteractivity(bar, item);
         }
     }
@@ -784,6 +854,16 @@ export class RoadmapVisual implements IVisual {
 
         const lineColor = this.settings.dependencyLineColor;
 
+        // Build index for O(1) lookups (optimization for large datasets)
+        const rowIndex = new Map<string, RowData>();
+        const workItemIdIndex = new Map<number, RowData>();
+        rows.forEach(row => {
+            if (row.data) {
+                rowIndex.set(row.data.id, row);
+                workItemIdIndex.set(row.data.workItemId, row);
+            }
+        });
+
         // Draw parent-child dependency lines
         if (this.settings.showParentChild) {
             rows.forEach(row => {
@@ -792,18 +872,18 @@ export class RoadmapVisual implements IVisual {
                 const item = row.data;
                 if (!item.parentId) return;
 
-                // Find parent row
-                const parentRow = rows.find(r => r.data?.id === item.parentId);
+                // Find parent row using index (O(1) instead of O(n))
+                const parentRow = rowIndex.get(item.parentId);
                 if (!parentRow || !parentRow.data) return;
 
                 // Calculate line coordinates
                 const parentItem = parentRow.data;
                 const parentEndX = parentItem.targetDate
-                    ? this.daysBetween(this.viewStart, parentItem.targetDate) * dayWidth
+                    ? DateService.daysBetween(this.viewStart, parentItem.targetDate) * dayWidth
                     : 0;
                 const childStartX = item.startDate
-                    ? this.daysBetween(this.viewStart, item.startDate) * dayWidth
-                    : (item.targetDate ? this.daysBetween(this.viewStart, item.targetDate) * dayWidth : 0);
+                    ? DateService.daysBetween(this.viewStart, item.startDate) * dayWidth
+                    : (item.targetDate ? DateService.daysBetween(this.viewStart, item.targetDate) * dayWidth : 0);
 
                 const parentY = parentRow.y + parentRow.height / 2;
                 const childY = row.y + row.height / 2;
@@ -815,17 +895,17 @@ export class RoadmapVisual implements IVisual {
                         .attr("d", `M ${parentEndX} ${parentY} C ${midX} ${parentY}, ${midX} ${childY}, ${childStartX} ${childY}`)
                         .attr("fill", "none")
                         .attr("stroke", lineColor)
-                        .attr("stroke-width", "1.5")
-                        .attr("stroke-dasharray", "4,2")
-                        .attr("opacity", "0.6");
+                        .attr("stroke-width", String(DEPENDENCY_LINES.PARENT_CHILD_WIDTH))
+                        .attr("stroke-dasharray", DEPENDENCY_LINES.PARENT_CHILD_DASH)
+                        .attr("opacity", String(DEPENDENCY_LINES.PARENT_CHILD_OPACITY));
 
                     // Arrow at child end
                     svgContainer.append("circle")
                         .attr("cx", childStartX)
                         .attr("cy", childY)
-                        .attr("r", "3")
+                        .attr("r", String(DEPENDENCY_LINES.CONNECTOR_RADIUS))
                         .attr("fill", lineColor)
-                        .attr("opacity", "0.8");
+                        .attr("opacity", String(DEPENDENCY_LINES.PREDECESSOR_OPACITY));
                 }
             });
         }
@@ -838,26 +918,23 @@ export class RoadmapVisual implements IVisual {
                 const item = row.data;
                 if (!item.predecessorId) return;
 
-                // Find predecessor - could be by workItemId
-                const predecessorRow = rows.find(r =>
-                    r.data && (
-                        r.data.workItemId === Number(item.predecessorId) ||
-                        r.data.id === item.predecessorId ||
-                        r.data.id === `E-${item.predecessorId}` ||
-                        r.data.id === `F-${item.predecessorId}` ||
-                        r.data.id === `M-${item.predecessorId}`
-                    )
-                );
+                // Find predecessor using indexes (O(1) instead of O(n))
+                const predId = Number(item.predecessorId);
+                let predecessorRow = workItemIdIndex.get(predId) ||
+                    rowIndex.get(item.predecessorId) ||
+                    rowIndex.get(`E-${item.predecessorId}`) ||
+                    rowIndex.get(`F-${item.predecessorId}`) ||
+                    rowIndex.get(`M-${item.predecessorId}`);
 
                 if (!predecessorRow || !predecessorRow.data) return;
 
                 const predItem = predecessorRow.data;
                 const predEndX = predItem.targetDate
-                    ? this.daysBetween(this.viewStart, predItem.targetDate) * dayWidth
+                    ? DateService.daysBetween(this.viewStart, predItem.targetDate) * dayWidth
                     : 0;
                 const itemStartX = item.startDate
-                    ? this.daysBetween(this.viewStart, item.startDate) * dayWidth
-                    : (item.targetDate ? this.daysBetween(this.viewStart, item.targetDate) * dayWidth : 0);
+                    ? DateService.daysBetween(this.viewStart, item.startDate) * dayWidth
+                    : (item.targetDate ? DateService.daysBetween(this.viewStart, item.targetDate) * dayWidth : 0);
 
                 const predY = predecessorRow.y + predecessorRow.height / 2;
                 const itemY = row.y + row.height / 2;
@@ -869,15 +946,15 @@ export class RoadmapVisual implements IVisual {
                         .attr("d", `M ${predEndX} ${predY} C ${midX} ${predY}, ${midX} ${itemY}, ${itemStartX} ${itemY}`)
                         .attr("fill", "none")
                         .attr("stroke", lineColor)
-                        .attr("stroke-width", "2")
-                        .attr("opacity", "0.8");
+                        .attr("stroke-width", String(DEPENDENCY_LINES.PREDECESSOR_WIDTH))
+                        .attr("opacity", String(DEPENDENCY_LINES.PREDECESSOR_OPACITY));
 
                     // Arrow at destination
-                    const arrowSize = 6;
+                    const arrowSize = DEPENDENCY_LINES.ARROW_SIZE;
                     svgContainer.append("polygon")
                         .attr("points", `${itemStartX},${itemY} ${itemStartX - arrowSize},${itemY - arrowSize / 2} ${itemStartX - arrowSize},${itemY + arrowSize / 2}`)
                         .attr("fill", lineColor)
-                        .attr("opacity", "0.8");
+                        .attr("opacity", String(DEPENDENCY_LINES.PREDECESSOR_OPACITY));
                 }
             });
         }
@@ -913,13 +990,13 @@ export class RoadmapVisual implements IVisual {
     private renderDailyHeaders(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
         let current = new Date(this.viewStart);
         while (current <= viewEnd) {
-            if (current.getDate() === 1 || current.getTime() === this.viewStart.getTime()) {
-                const x = this.daysBetween(this.viewStart, current) * dayWidth;
-                const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
-                const width = this.daysBetween(current, monthEnd > viewEnd ? viewEnd : monthEnd) * dayWidth + dayWidth;
-                container.append("div").classed("month-cell", true).classed("month-primary", true).style("left", `${x}px`).style("width", `${width}px`).text(current.toLocaleDateString("en-AU", { month: "short", year: "numeric" }));
+            if (DateService.isFirstOfMonth(current) || current.getTime() === this.viewStart.getTime()) {
+                const x = DateService.daysBetween(this.viewStart, current) * dayWidth;
+                const monthEnd = DateService.getMonthEnd(current.getFullYear(), current.getMonth());
+                const width = DateService.daysBetween(current, monthEnd > viewEnd ? viewEnd : monthEnd) * dayWidth + dayWidth;
+                container.append("div").classed("month-cell", true).classed("month-primary", true).style("left", `${x}px`).style("width", `${width}px`).text(DateService.formatAU(current, { month: "short", year: "numeric" }));
             }
-            current = this.addDays(current, 1);
+            current = DateService.addDays(current, 1);
         }
         if (dayWidth >= 20) {
             current = new Date(this.viewStart);
@@ -927,7 +1004,7 @@ export class RoadmapVisual implements IVisual {
             while (current <= viewEnd) {
                 const x = i * dayWidth;
                 container.append("div").classed("day-cell", true).style("left", `${x}px`).style("width", `${dayWidth}px`).style("top", "28px").text(current.getDate().toString());
-                current = this.addDays(current, 1);
+                current = DateService.addDays(current, 1);
                 i++;
             }
         }
@@ -936,38 +1013,35 @@ export class RoadmapVisual implements IVisual {
     private renderWeeklyHeaders(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
         let current = new Date(this.viewStart);
         while (current <= viewEnd) {
-            if (current.getDate() === 1 || current.getTime() === this.viewStart.getTime()) {
-                const x = this.daysBetween(this.viewStart, current) * dayWidth;
-                const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
-                const width = this.daysBetween(current, monthEnd > viewEnd ? viewEnd : monthEnd) * dayWidth + dayWidth;
-                container.append("div").classed("month-cell", true).classed("month-primary", true).style("left", `${x}px`).style("width", `${width}px`).text(current.toLocaleDateString("en-AU", { month: "short", year: "numeric" }));
+            if (DateService.isFirstOfMonth(current) || current.getTime() === this.viewStart.getTime()) {
+                const x = DateService.daysBetween(this.viewStart, current) * dayWidth;
+                const monthEnd = DateService.getMonthEnd(current.getFullYear(), current.getMonth());
+                const width = DateService.daysBetween(current, monthEnd > viewEnd ? viewEnd : monthEnd) * dayWidth + dayWidth;
+                container.append("div").classed("month-cell", true).classed("month-primary", true).style("left", `${x}px`).style("width", `${width}px`).text(DateService.formatAU(current, { month: "short", year: "numeric" }));
             }
-            current = this.addDays(current, 1);
+            current = DateService.addDays(current, 1);
         }
-        current = new Date(this.viewStart);
-        const dayOfWeek = current.getDay();
-        const daysToMonday = dayOfWeek === 0 ? 1 : (dayOfWeek === 1 ? 0 : 8 - dayOfWeek);
-        current = this.addDays(current, daysToMonday);
+        current = DateService.nextMonday(new Date(this.viewStart));
         while (current <= viewEnd) {
-            const x = this.daysBetween(this.viewStart, current) * dayWidth;
-            const weekEnd = this.addDays(current, 6);
+            const x = DateService.daysBetween(this.viewStart, current) * dayWidth;
+            const weekEnd = DateService.addDays(current, 6);
             const effectiveEnd = weekEnd > viewEnd ? viewEnd : weekEnd;
-            const width = this.daysBetween(current, effectiveEnd) * dayWidth + dayWidth;
-            container.append("div").classed("week-cell", true).style("left", `${x}px`).style("width", `${width}px`).style("top", "28px").text(`W${this.getWeekNumber(current)}`);
-            current = this.addDays(current, 7);
+            const width = DateService.daysBetween(current, effectiveEnd) * dayWidth + dayWidth;
+            container.append("div").classed("week-cell", true).style("left", `${x}px`).style("width", `${width}px`).style("top", "28px").text(`W${DateService.getWeekNumber(current)}`);
+            current = DateService.addDays(current, 7);
         }
     }
 
     private renderMonthlyHeaders(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
         let current = new Date(this.viewStart);
         while (current <= viewEnd) {
-            if (current.getDate() === 1 || current.getTime() === this.viewStart.getTime()) {
-                const x = this.daysBetween(this.viewStart, current) * dayWidth;
-                const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0);
-                const width = this.daysBetween(current, monthEnd > viewEnd ? viewEnd : monthEnd) * dayWidth + dayWidth;
-                container.append("div").classed("month-cell", true).style("left", `${x}px`).style("width", `${width}px`).text(current.toLocaleDateString("en-AU", { month: "short", year: "numeric" }));
+            if (DateService.isFirstOfMonth(current) || current.getTime() === this.viewStart.getTime()) {
+                const x = DateService.daysBetween(this.viewStart, current) * dayWidth;
+                const monthEnd = DateService.getMonthEnd(current.getFullYear(), current.getMonth());
+                const width = DateService.daysBetween(current, monthEnd > viewEnd ? viewEnd : monthEnd) * dayWidth + dayWidth;
+                container.append("div").classed("month-cell", true).style("left", `${x}px`).style("width", `${width}px`).text(DateService.formatAU(current, { month: "short", year: "numeric" }));
             }
-            current = this.addDays(current, 1);
+            current = DateService.addDays(current, 1);
         }
     }
 
@@ -977,26 +1051,26 @@ export class RoadmapVisual implements IVisual {
         let yearStartX = 0;
         while (current <= viewEnd) {
             if (current.getFullYear() !== currentYear) {
-                const width = this.daysBetween(this.viewStart, current) * dayWidth - yearStartX;
+                const width = DateService.daysBetween(this.viewStart, current) * dayWidth - yearStartX;
                 container.append("div").classed("year-cell", true).style("left", `${yearStartX}px`).style("width", `${width}px`).text(String(currentYear));
-                yearStartX = this.daysBetween(this.viewStart, current) * dayWidth;
+                yearStartX = DateService.daysBetween(this.viewStart, current) * dayWidth;
                 currentYear = current.getFullYear();
             }
-            current = this.addDays(current, 1);
+            current = DateService.addDays(current, 1);
         }
-        const totalWidth = this.daysBetween(this.viewStart, viewEnd) * dayWidth + dayWidth;
+        const totalWidth = DateService.daysBetween(this.viewStart, viewEnd) * dayWidth + dayWidth;
         container.append("div").classed("year-cell", true).style("left", `${yearStartX}px`).style("width", `${totalWidth - yearStartX}px`).text(String(currentYear));
         current = new Date(this.viewStart);
         while (current <= viewEnd) {
-            const quarter = Math.floor(current.getMonth() / 3) + 1;
-            if ((current.getMonth() % 3 === 0 && current.getDate() === 1) || current.getTime() === this.viewStart.getTime()) {
-                const x = this.daysBetween(this.viewStart, current) * dayWidth;
-                const quarterEnd = new Date(current.getFullYear(), quarter * 3, 0);
+            const quarter = DateService.getQuarter(current);
+            if (DateService.isFirstOfQuarter(current) || current.getTime() === this.viewStart.getTime()) {
+                const x = DateService.daysBetween(this.viewStart, current) * dayWidth;
+                const quarterEnd = DateService.getQuarterEnd(current.getFullYear(), quarter);
                 const effectiveEnd = quarterEnd > viewEnd ? viewEnd : quarterEnd;
-                const width = this.daysBetween(current, effectiveEnd) * dayWidth + dayWidth;
+                const width = DateService.daysBetween(current, effectiveEnd) * dayWidth + dayWidth;
                 container.append("div").classed("quarter-cell", true).style("left", `${x}px`).style("width", `${width}px`).style("top", "28px").text(`Q${quarter}`);
             }
-            current = this.addDays(current, 1);
+            current = DateService.addDays(current, 1);
         }
     }
 
@@ -1007,41 +1081,33 @@ export class RoadmapVisual implements IVisual {
         let yearStartX = 0;
         while (current <= viewEnd) {
             if (current.getFullYear() !== currentYear) {
-                const width = this.daysBetween(this.viewStart, current) * dayWidth - yearStartX;
+                const width = DateService.daysBetween(this.viewStart, current) * dayWidth - yearStartX;
                 container.append("div").classed("year-cell", true).classed("year-cell-multi", true).style("left", `${yearStartX}px`).style("width", `${width}px`).style("height", "36px").text(String(currentYear));
-                yearStartX = this.daysBetween(this.viewStart, current) * dayWidth;
+                yearStartX = DateService.daysBetween(this.viewStart, current) * dayWidth;
                 currentYear = current.getFullYear();
             }
-            current = this.addDays(current, 1);
+            current = DateService.addDays(current, 1);
         }
         // Render last year
-        const totalWidth = this.daysBetween(this.viewStart, viewEnd) * dayWidth + dayWidth;
+        const totalWidth = DateService.daysBetween(this.viewStart, viewEnd) * dayWidth + dayWidth;
         container.append("div").classed("year-cell", true).classed("year-cell-multi", true).style("left", `${yearStartX}px`).style("width", `${totalWidth - yearStartX}px`).style("height", "36px").text(String(currentYear));
-    }
-
-    private getWeekNumber(date: Date): number {
-        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-        const dayNum = d.getUTCDay() || 7;
-        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-        return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     }
 
     private renderGrid(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, totalDays: number, dayWidth: number, _viewEnd: Date): void {
         switch (this.settings.timeScale) {
         case "daily":
             for (let i = 0; i < totalDays; i++) {
-                const date = this.addDays(this.viewStart, i);
-                const isMonth = date.getDate() === 1;
-                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                const date = DateService.addDays(this.viewStart, i);
+                const isMonth = DateService.isFirstOfMonth(date);
+                const isWeekend = DateService.isWeekend(date);
                 container.append("div").classed("grid-line", true).classed("grid-line-month", isMonth).classed("grid-line-weekend", isWeekend).style("left", `${i * dayWidth}px`);
             }
             break;
         case "weekly":
             for (let i = 0; i < totalDays; i++) {
-                const date = this.addDays(this.viewStart, i);
-                const isMonth = date.getDate() === 1;
-                const isMonday = date.getDay() === 1;
+                const date = DateService.addDays(this.viewStart, i);
+                const isMonth = DateService.isFirstOfMonth(date);
+                const isMonday = DateService.isMonday(date);
                 if (isMonth || isMonday) {
                     container.append("div").classed("grid-line", true).classed("grid-line-month", isMonth).classed("grid-line-week", isMonday && !isMonth).style("left", `${i * dayWidth}px`);
                 }
@@ -1049,17 +1115,17 @@ export class RoadmapVisual implements IVisual {
             break;
         case "monthly":
             for (let i = 0; i < totalDays; i++) {
-                const date = this.addDays(this.viewStart, i);
-                if (date.getDate() === 1) {
+                const date = DateService.addDays(this.viewStart, i);
+                if (DateService.isFirstOfMonth(date)) {
                     container.append("div").classed("grid-line", true).classed("grid-line-month", true).style("left", `${i * dayWidth}px`);
                 }
             }
             break;
         case "annual":
             for (let i = 0; i < totalDays; i++) {
-                const date = this.addDays(this.viewStart, i);
-                const isYear = date.getMonth() === 0 && date.getDate() === 1;
-                const isQuarter = date.getDate() === 1 && date.getMonth() % 3 === 0;
+                const date = DateService.addDays(this.viewStart, i);
+                const isYear = DateService.isFirstOfYear(date);
+                const isQuarter = DateService.isFirstOfQuarter(date);
                 if (isYear || isQuarter) {
                     container.append("div").classed("grid-line", true).classed("grid-line-year", isYear).classed("grid-line-quarter", isQuarter && !isYear).style("left", `${i * dayWidth}px`);
                 }
@@ -1068,8 +1134,8 @@ export class RoadmapVisual implements IVisual {
         case "multiYear":
             // Grid lines only at year boundaries for multi-year view
             for (let i = 0; i < totalDays; i++) {
-                const date = this.addDays(this.viewStart, i);
-                const isYear = date.getMonth() === 0 && date.getDate() === 1;
+                const date = DateService.addDays(this.viewStart, i);
+                const isYear = DateService.isFirstOfYear(date);
                 if (isYear) {
                     container.append("div").classed("grid-line", true).classed("grid-line-year", true).style("left", `${i * dayWidth}px`);
                 }
@@ -1079,9 +1145,9 @@ export class RoadmapVisual implements IVisual {
     }
 
     private renderTodayLine(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
-        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const today = DateService.today();
         if (today >= this.viewStart && today <= viewEnd) {
-            const line = container.append("div").classed("today-line", true).style("left", `${this.daysBetween(this.viewStart, today) * dayWidth}px`);
+            const line = container.append("div").classed("today-line", true).style("left", `${DateService.daysBetween(this.viewStart, today) * dayWidth}px`);
             line.append("span").classed("today-label", true).text("TODAY");
         }
     }
@@ -1120,25 +1186,8 @@ export class RoadmapVisual implements IVisual {
         return "";
     }
 
-    private parseDate(value: string | number | Date | null | undefined): Date | null {
-        if (!value) return null;
-        const d = new Date(value);
-        d.setHours(0, 0, 0, 0);
-        return isNaN(d.getTime()) ? null : d;
-    }
-
-    private addDays(date: Date, days: number): Date {
-        const r = new Date(date);
-        r.setDate(r.getDate() + days);
-        return r;
-    }
-
-    private daysBetween(start: Date, end: Date): number {
-        // Normalize to UTC midnight to avoid DST edge cases
-        const startUtc = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
-        const endUtc = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
-        return Math.ceil((endUtc - startUtc) / (1000 * 60 * 60 * 24));
-    }
+    // Note: Date utilities (parseDate, addDays, daysBetween) have been
+    // extracted to DateService for better testability and DST handling.
 
     /**
      * Export the roadmap to PDF with security classification markings
@@ -1151,7 +1200,7 @@ export class RoadmapVisual implements IVisual {
         try {
             // Capture the visual content
             const canvas = await html2canvas(containerNode, {
-                scale: 2,
+                scale: PDF_EXPORT.CANVAS_SCALE,
                 useCORS: true,
                 allowTaint: true,
                 backgroundColor: "#FFFFFF"
@@ -1166,8 +1215,8 @@ export class RoadmapVisual implements IVisual {
 
             const pageWidth = pdf.internal.pageSize.getWidth();
             const pageHeight = pdf.internal.pageSize.getHeight();
-            const margin = 15;
-            const headerFooterHeight = 12;
+            const margin = PDF_EXPORT.MARGIN_MM;
+            const headerFooterHeight = PDF_EXPORT.HEADER_FOOTER_HEIGHT_MM;
             const securityClassification = this.settings.securityClassification.toUpperCase();
 
             // Calculate content area
@@ -1179,8 +1228,8 @@ export class RoadmapVisual implements IVisual {
             // Draw security classification at TOP (PSPF requirement: center top, red, bold, capitals)
             if (securityClassification) {
                 pdf.setFont("helvetica", "bold");
-                pdf.setFontSize(14);
-                pdf.setTextColor(220, 38, 38); // Red color (#DC2626)
+                pdf.setFontSize(PDF_EXPORT.SECURITY_FONT_SIZE);
+                pdf.setTextColor(PDF_EXPORT.SECURITY_COLOR.r, PDF_EXPORT.SECURITY_COLOR.g, PDF_EXPORT.SECURITY_COLOR.b);
                 pdf.text(securityClassification, pageWidth / 2, margin + 5, { align: "center" });
             }
 
@@ -1188,8 +1237,7 @@ export class RoadmapVisual implements IVisual {
             if (this.settings.showLogo && this.settings.logoUrl) {
                 try {
                     const logoY = margin + (securityClassification ? headerFooterHeight : 0);
-                    // Center the logo, assume max height of 12mm
-                    pdf.addImage(this.settings.logoUrl, "PNG", (pageWidth - 40) / 2, logoY, 40, 12);
+                    pdf.addImage(this.settings.logoUrl, "PNG", (pageWidth - PDF_EXPORT.LOGO_WIDTH_MM) / 2, logoY, PDF_EXPORT.LOGO_WIDTH_MM, PDF_EXPORT.LOGO_HEIGHT_MM);
                 } catch (logoError) {
                     console.warn("Failed to add logo to PDF:", logoError);
                 }
@@ -1210,16 +1258,16 @@ export class RoadmapVisual implements IVisual {
             // Draw security classification at BOTTOM (PSPF requirement: center bottom, red, bold, capitals)
             if (securityClassification) {
                 pdf.setFont("helvetica", "bold");
-                pdf.setFontSize(14);
-                pdf.setTextColor(220, 38, 38); // Red color (#DC2626)
+                pdf.setFontSize(PDF_EXPORT.SECURITY_FONT_SIZE);
+                pdf.setTextColor(PDF_EXPORT.SECURITY_COLOR.r, PDF_EXPORT.SECURITY_COLOR.g, PDF_EXPORT.SECURITY_COLOR.b);
                 pdf.text(securityClassification, pageWidth / 2, pageHeight - margin, { align: "center" });
             }
 
             // Add footer with generation date
             pdf.setFont("helvetica", "normal");
-            pdf.setFontSize(8);
-            pdf.setTextColor(100, 100, 100);
-            const dateStr = new Date().toLocaleDateString("en-AU", {
+            pdf.setFontSize(PDF_EXPORT.FOOTER_FONT_SIZE);
+            pdf.setTextColor(PDF_EXPORT.FOOTER_COLOR.r, PDF_EXPORT.FOOTER_COLOR.g, PDF_EXPORT.FOOTER_COLOR.b);
+            const dateStr = DateService.formatAU(new Date(), {
                 day: "2-digit",
                 month: "short",
                 year: "numeric",
@@ -1248,5 +1296,8 @@ export class RoadmapVisual implements IVisual {
         this.workItems = [];
         this.collapsed.clear();
         this.rowPositions.clear();
+        this.allRows = [];
+        this.renderedRowIds.clear();
+        this.coordinateEngine = null;
     }
 }
