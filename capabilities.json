@@ -336,6 +336,25 @@
           "type": { "bool": true }
         }
       }
+    },
+    "pdfExport": {
+      "displayName": "PDF Export",
+      "properties": {
+        "securityClassification": {
+          "displayName": "Security Classification",
+          "description": "Security classification text displayed at top and bottom of PDF (e.g., OFFICIAL, PROTECTED, SECRET)",
+          "type": { "text": true }
+        },
+        "showLogo": {
+          "displayName": "Show Logo",
+          "type": { "bool": true }
+        },
+        "logoUrl": {
+          "displayName": "Logo URL",
+          "description": "URL or base64 data URI of the logo image",
+          "type": { "text": true }
+        }
+      }
     }
   },
   "privileges": []
