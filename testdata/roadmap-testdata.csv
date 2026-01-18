@@ -1,30 +1,117 @@
 workItemId,title,workItemType,state,startDate,targetDate,parentId,areaPath,iterationPath,assignedTo,tags,scheme
-1001,Platform Modernization,Epic,Active,2026-02-01,2026-05-15,,Platform,Q1-2026,John Smith,infrastructure,1
-1002,Platform Modernization Complete,Milestone,New,,2026-05-15,1001,Platform,Q2-2026,John Smith,infrastructure,1
-1003,Migrate Legacy Database,Feature,Active,2026-02-01,2026-03-20,1001,Platform,Q1-2026,Jane Doe,database,1
-1004,Implement New API Gateway,Feature,New,2026-02-15,2026-04-10,1001,Platform,Q1-2026,Bob Wilson,api,1
-1005,Update Authentication Service,Feature,New,2026-03-01,2026-04-25,1001,Platform,Q2-2026,Alice Chen,security,1
-1006,Deploy Cloud Infrastructure,Feature,New,2026-04-01,2026-05-15,1001,Platform,Q2-2026,John Smith,cloud,1
-2001,Customer Portal v2,Epic,Active,2026-03-01,2026-07-30,,Portal,Q1-2026,Sarah Johnson,customer-facing,2
-2002,Portal v2 Launch,Milestone,New,,2026-07-30,2001,Portal,Q3-2026,Sarah Johnson,customer-facing,2
-2003,Redesign User Dashboard,Feature,Active,2026-03-01,2026-04-15,2001,Portal,Q1-2026,Mike Brown,ui,2
-2004,Implement Self-Service Features,Feature,New,2026-03-20,2026-05-30,2001,Portal,Q2-2026,Lisa Wang,self-service,2
-2005,Add Analytics Dashboard,Feature,New,2026-04-15,2026-06-20,2001,Portal,Q2-2026,Tom Garcia,analytics,2
-2006,Mobile Responsive Overhaul,Feature,New,2026-05-01,2026-07-30,2001,Portal,Q3-2026,Sarah Johnson,mobile,2
-3001,AI Integration Initiative,Epic,New,2026-04-15,2026-09-30,,AI,Q2-2026,David Lee,innovation,3
-3002,AI Phase 1 Complete,Milestone,New,,2026-09-30,3001,AI,Q3-2026,David Lee,innovation,3
-3003,Natural Language Search,Feature,New,2026-04-15,2026-06-15,3001,AI,Q2-2026,Emily Clark,nlp,3
-3004,Predictive Analytics Engine,Feature,New,2026-05-20,2026-07-31,3001,AI,Q2-2026,Chris Martinez,ml,3
-3005,Chatbot Integration,Feature,New,2026-06-15,2026-09-30,3001,AI,Q3-2026,David Lee,chatbot,3
-4001,Security Compliance Program,Epic,Active,2026-05-01,2026-10-31,,Security,Q2-2026,Rachel Kim,compliance,4
-4002,SOC2 Certification,Milestone,New,,2026-10-31,4001,Security,Q4-2026,Rachel Kim,compliance,4
-4003,Vulnerability Assessment,Feature,Active,2026-05-01,2026-06-30,4001,Security,Q2-2026,James Wilson,security-audit,4
-4004,Implement Zero Trust Architecture,Feature,New,2026-06-01,2026-08-15,4001,Security,Q3-2026,Nina Patel,zero-trust,4
-4005,Security Training Platform,Feature,New,2026-07-01,2026-09-15,4001,Security,Q3-2026,Kevin Zhang,training,4
-4006,Compliance Documentation,Feature,New,2026-08-01,2026-10-31,4001,Security,Q4-2026,Rachel Kim,documentation,4
-5001,Data Pipeline Overhaul,Epic,New,2026-08-01,2027-01-15,,Data,Q3-2026,Marcus Thompson,data-engineering,1
-5002,Pipeline v2 Ready,Milestone,New,,2027-01-15,5001,Data,Q1-2027,Marcus Thompson,data-engineering,1
-5003,Stream Processing Framework,Feature,New,2026-08-01,2026-09-30,5001,Data,Q3-2026,Amy Rodriguez,streaming,1
-5004,Data Lake Migration,Feature,New,2026-09-01,2026-11-15,5001,Data,Q4-2026,Derek Moore,data-lake,1
-5005,Real-time Analytics Pipeline,Feature,New,2026-10-01,2026-12-20,5001,Data,Q4-2026,Sophie Turner,analytics,1
-5006,Data Governance Implementation,Feature,New,2026-11-01,2027-01-15,5001,Data,Q1-2027,Marcus Thompson,governance,1
+1001,Platform Modernization,Epic,Active,2026-02-03,2026-05-22,,Platform,Q1-2026,John Smith,infrastructure,1
+1002,Platform Modernization Complete,Milestone,New,,2026-05-22,1001,Platform,Q2-2026,John Smith,infrastructure,1
+1003,Migrate Legacy Database,Feature,Active,2026-02-03,2026-03-18,1001,Platform,Q1-2026,Jane Doe,database,1
+1004,Implement New API Gateway,Feature,New,2026-02-17,2026-04-09,1001,Platform,Q1-2026,Bob Wilson,api,1
+1005,Update Authentication Service,Feature,New,2026-03-05,2026-04-28,1001,Platform,Q2-2026,Alice Chen,security,1
+1006,Deploy Cloud Infrastructure,Feature,New,2026-04-14,2026-05-22,1001,Platform,Q2-2026,John Smith,cloud,1
+2001,Customer Portal v2,Epic,Active,2026-03-09,2026-07-31,,Portal,Q1-2026,Sarah Johnson,customer-facing,2
+2002,Portal v2 Launch,Milestone,New,,2026-07-31,2001,Portal,Q3-2026,Sarah Johnson,customer-facing,2
+2003,Redesign User Dashboard,Feature,Active,2026-03-09,2026-04-17,2001,Portal,Q1-2026,Mike Brown,ui,2
+2004,Implement Self-Service Features,Feature,New,2026-03-23,2026-05-29,2001,Portal,Q2-2026,Lisa Wang,self-service,2
+2005,Add Analytics Dashboard,Feature,New,2026-04-21,2026-06-24,2001,Portal,Q2-2026,Tom Garcia,analytics,2
+2006,Mobile Responsive Overhaul,Feature,New,2026-05-11,2026-07-31,2001,Portal,Q3-2026,Sarah Johnson,mobile,2
+3001,AI Integration Initiative,Epic,New,2026-04-20,2026-09-25,,AI,Q2-2026,David Lee,innovation,3
+3002,AI Phase 1 Complete,Milestone,New,,2026-09-25,3001,AI,Q3-2026,David Lee,innovation,3
+3003,Natural Language Search,Feature,New,2026-04-20,2026-06-12,3001,AI,Q2-2026,Emily Clark,nlp,3
+3004,Predictive Analytics Engine,Feature,New,2026-05-18,2026-08-07,3001,AI,Q2-2026,Chris Martinez,ml,3
+3005,Chatbot Integration,Feature,New,2026-06-29,2026-09-25,3001,AI,Q3-2026,David Lee,chatbot,3
+4001,Security Compliance Program,Epic,Active,2026-05-04,2026-10-29,,Security,Q2-2026,Rachel Kim,compliance,4
+4002,SOC2 Certification,Milestone,New,,2026-10-29,4001,Security,Q4-2026,Rachel Kim,compliance,4
+4003,Vulnerability Assessment,Feature,Active,2026-05-04,2026-06-26,4001,Security,Q2-2026,James Wilson,security-audit,4
+4004,Implement Zero Trust Architecture,Feature,New,2026-06-08,2026-08-19,4001,Security,Q3-2026,Nina Patel,zero-trust,4
+4005,Security Training Platform,Feature,New,2026-07-13,2026-09-11,4001,Security,Q3-2026,Kevin Zhang,training,4
+4006,Compliance Documentation,Feature,New,2026-08-24,2026-10-29,4001,Security,Q4-2026,Rachel Kim,documentation,4
+5001,Data Pipeline Overhaul,Epic,New,2026-08-10,2027-01-16,,Data,Q3-2026,Marcus Thompson,data-engineering,1
+5002,Pipeline v2 Ready,Milestone,New,,2027-01-16,5001,Data,Q1-2027,Marcus Thompson,data-engineering,1
+5003,Stream Processing Framework,Feature,New,2026-08-10,2026-09-28,5001,Data,Q3-2026,Amy Rodriguez,streaming,1
+5004,Data Lake Migration,Feature,New,2026-09-07,2026-11-13,5001,Data,Q4-2026,Derek Moore,data-lake,1
+5005,Real-time Analytics Pipeline,Feature,New,2026-10-05,2026-12-18,5001,Data,Q4-2026,Sophie Turner,analytics,1
+5006,Data Governance Implementation,Feature,New,2026-11-17,2027-01-16,5001,Data,Q1-2027,Marcus Thompson,governance,1
+6001,Microservices Migration,Epic,New,2027-01-12,2027-05-28,,Platform,Q1-2027,John Smith,architecture,2
+6002,Microservices Migration Complete,Milestone,New,,2027-05-28,6001,Platform,Q2-2027,John Smith,architecture,2
+6003,Service Decomposition,Feature,New,2027-01-12,2027-02-26,6001,Platform,Q1-2027,Jane Doe,refactoring,2
+6004,Container Orchestration,Feature,New,2027-02-02,2027-03-31,6001,Platform,Q1-2027,Bob Wilson,kubernetes,2
+6005,Service Mesh Implementation,Feature,New,2027-03-15,2027-04-29,6001,Platform,Q2-2027,Alice Chen,networking,2
+6006,Observability Platform,Feature,New,2027-04-07,2027-05-28,6001,Platform,Q2-2027,John Smith,monitoring,2
+7001,Partner Integration Platform,Epic,New,2027-02-16,2027-07-09,,Integrations,Q1-2027,Sarah Johnson,partnerships,3
+7002,Partner Platform Launch,Milestone,New,,2027-07-09,7001,Integrations,Q3-2027,Sarah Johnson,partnerships,3
+7003,Partner API Development,Feature,New,2027-02-16,2027-04-02,7001,Integrations,Q1-2027,Mike Brown,api,3
+7004,OAuth Integration,Feature,New,2027-03-09,2027-05-14,7001,Integrations,Q2-2027,Lisa Wang,authentication,3
+7005,Partner Dashboard,Feature,New,2027-04-21,2027-06-18,7001,Integrations,Q2-2027,Tom Garcia,dashboard,3
+7006,Webhook System,Feature,New,2027-05-12,2027-07-09,7001,Integrations,Q3-2027,Sarah Johnson,events,3
+8001,Machine Learning Platform,Epic,New,2027-04-06,2027-09-17,,AI,Q2-2027,David Lee,ml-ops,4
+8002,ML Platform Ready,Milestone,New,,2027-09-17,8001,AI,Q3-2027,David Lee,ml-ops,4
+8003,Feature Store Implementation,Feature,New,2027-04-06,2027-05-29,8001,AI,Q2-2027,Emily Clark,features,4
+8004,Model Training Pipeline,Feature,New,2027-05-11,2027-07-23,8001,AI,Q2-2027,Chris Martinez,training,4
+8005,Model Serving Infrastructure,Feature,New,2027-06-30,2027-09-17,8001,AI,Q3-2027,David Lee,inference,4
+9001,Multi-Region Expansion,Epic,New,2027-06-14,2027-11-20,,Infrastructure,Q2-2027,Rachel Kim,global,1
+9002,Multi-Region Complete,Milestone,New,,2027-11-20,9001,Infrastructure,Q4-2027,Rachel Kim,global,1
+9003,APAC Region Setup,Feature,New,2027-06-14,2027-08-06,9001,Infrastructure,Q3-2027,James Wilson,apac,1
+9004,EMEA Region Setup,Feature,New,2027-07-21,2027-09-24,9001,Infrastructure,Q3-2027,Nina Patel,emea,1
+9005,Global Load Balancing,Feature,New,2027-08-18,2027-10-15,9001,Infrastructure,Q4-2027,Kevin Zhang,networking,1
+9006,Data Residency Compliance,Feature,New,2027-09-27,2027-11-20,9001,Infrastructure,Q4-2027,Rachel Kim,compliance,1
+10001,Event-Driven Architecture,Epic,New,2027-09-06,2028-02-13,,Platform,Q3-2027,Marcus Thompson,architecture,2
+10002,Event Architecture Complete,Milestone,New,,2028-02-13,10001,Platform,Q1-2028,Marcus Thompson,architecture,2
+10003,Event Bus Implementation,Feature,New,2027-09-06,2027-10-22,10001,Platform,Q4-2027,Amy Rodriguez,messaging,2
+10004,Event Sourcing Pattern,Feature,New,2027-10-04,2027-12-03,10001,Platform,Q4-2027,Derek Moore,cqrs,2
+10005,Saga Orchestration,Feature,New,2027-11-10,2028-01-09,10001,Platform,Q1-2028,Sophie Turner,workflows,2
+10006,Event Analytics,Feature,New,2027-12-15,2028-02-13,10001,Platform,Q1-2028,Marcus Thompson,analytics,2
+11001,Developer Experience Platform,Epic,New,2028-01-10,2028-05-26,,DevEx,Q1-2028,John Smith,developer-tools,3
+11002,DevEx Platform Launch,Milestone,New,,2028-05-26,11001,DevEx,Q2-2028,John Smith,developer-tools,3
+11003,Internal Developer Portal,Feature,New,2028-01-10,2028-02-27,11001,DevEx,Q1-2028,Jane Doe,portal,3
+11004,Self-Service Provisioning,Feature,New,2028-02-07,2028-04-03,11001,DevEx,Q1-2028,Bob Wilson,automation,3
+11005,Documentation Platform,Feature,New,2028-03-04,2028-04-24,11001,DevEx,Q2-2028,Alice Chen,docs,3
+11006,Developer Analytics,Feature,New,2028-04-01,2028-05-26,11001,DevEx,Q2-2028,John Smith,metrics,3
+12001,Customer 360 Initiative,Epic,New,2028-02-21,2028-07-14,,Customer,Q1-2028,Sarah Johnson,customer-data,4
+12002,Customer 360 Complete,Milestone,New,,2028-07-14,12001,Customer,Q3-2028,Sarah Johnson,customer-data,4
+12003,Data Unification Layer,Feature,New,2028-02-21,2028-04-10,12001,Customer,Q1-2028,Mike Brown,data,4
+12004,Customer Profile Service,Feature,New,2028-03-18,2028-05-16,12001,Customer,Q2-2028,Lisa Wang,profiles,4
+12005,Journey Analytics,Feature,New,2028-04-22,2028-06-19,12001,Customer,Q2-2028,Tom Garcia,analytics,4
+12006,Personalization Engine,Feature,New,2028-05-20,2028-07-14,12001,Customer,Q3-2028,Sarah Johnson,personalization,4
+13001,GenAI Copilot Platform,Epic,New,2028-04-17,2028-09-27,,AI,Q2-2028,David Lee,genai,1
+13002,Copilot Platform Ready,Milestone,New,,2028-09-27,13001,AI,Q3-2028,David Lee,genai,1
+13003,LLM Infrastructure,Feature,New,2028-04-17,2028-06-06,13001,AI,Q2-2028,Emily Clark,infrastructure,1
+13004,Prompt Engineering Framework,Feature,New,2028-05-13,2028-07-18,13001,AI,Q3-2028,Chris Martinez,prompts,1
+13005,Agent Orchestration,Feature,New,2028-06-24,2028-09-27,13001,AI,Q3-2028,David Lee,agents,1
+14001,Zero Downtime Deployments,Epic,New,2028-06-05,2028-10-18,,DevOps,Q2-2028,Rachel Kim,reliability,2
+14002,Zero Downtime Complete,Milestone,New,,2028-10-18,14001,DevOps,Q4-2028,Rachel Kim,reliability,2
+14003,Blue-Green Deployment,Feature,New,2028-06-05,2028-07-24,14001,DevOps,Q3-2028,James Wilson,deployment,2
+14004,Canary Release System,Feature,New,2028-07-08,2028-08-29,14001,DevOps,Q3-2028,Nina Patel,releases,2
+14005,Feature Flag Platform,Feature,New,2028-08-12,2028-09-26,14001,DevOps,Q3-2028,Kevin Zhang,flags,2
+14006,Rollback Automation,Feature,New,2028-09-09,2028-10-18,14001,DevOps,Q4-2028,Rachel Kim,automation,2
+15001,Real-Time Collaboration,Epic,New,2028-08-28,2029-01-31,,Collaboration,Q3-2028,Marcus Thompson,realtime,3
+15002,Collaboration Platform Ready,Milestone,New,,2029-01-31,15001,Collaboration,Q1-2029,Marcus Thompson,realtime,3
+15003,WebSocket Infrastructure,Feature,New,2028-08-28,2028-10-11,15001,Collaboration,Q4-2028,Amy Rodriguez,websockets,3
+15004,Presence System,Feature,New,2028-09-23,2028-11-15,15001,Collaboration,Q4-2028,Derek Moore,presence,3
+15005,Collaborative Editing,Feature,New,2028-10-21,2028-12-20,15001,Collaboration,Q4-2028,Sophie Turner,editing,3
+15006,Notification System,Feature,New,2028-11-25,2029-01-31,15001,Collaboration,Q1-2029,Marcus Thompson,notifications,3
+16001,API Gateway Redesign,Epic,New,2029-01-14,2029-05-30,,Platform,Q1-2029,John Smith,api,4
+16002,API Gateway Complete,Milestone,New,,2029-05-30,16001,Platform,Q2-2029,John Smith,api,4
+16003,Rate Limiting Overhaul,Feature,New,2029-01-14,2029-02-28,16001,Platform,Q1-2029,Jane Doe,throttling,4
+16004,API Versioning Strategy,Feature,New,2029-02-11,2029-04-04,16001,Platform,Q1-2029,Bob Wilson,versioning,4
+16005,GraphQL Federation,Feature,New,2029-03-10,2029-04-25,16001,Platform,Q2-2029,Alice Chen,graphql,4
+16006,API Documentation Portal,Feature,New,2029-04-07,2029-05-30,16001,Platform,Q2-2029,John Smith,docs,4
+17001,Mobile App Rewrite,Epic,New,2029-02-19,2029-07-11,,Mobile,Q1-2029,Sarah Johnson,mobile,1
+17002,Mobile App Launch,Milestone,New,,2029-07-11,17001,Mobile,Q3-2029,Sarah Johnson,mobile,1
+17003,Cross-Platform Framework,Feature,New,2029-02-19,2029-04-04,17001,Mobile,Q1-2029,Mike Brown,framework,1
+17004,Offline-First Architecture,Feature,New,2029-03-18,2029-05-16,17001,Mobile,Q2-2029,Lisa Wang,offline,1
+17005,Push Notification System,Feature,New,2029-04-23,2029-06-13,17001,Mobile,Q2-2029,Tom Garcia,notifications,1
+17006,App Performance Optimization,Feature,New,2029-05-20,2029-07-11,17001,Mobile,Q3-2029,Sarah Johnson,performance,1
+18001,Autonomous Operations,Epic,New,2029-04-09,2029-09-19,,Operations,Q2-2029,David Lee,automation,2
+18002,Autonomous Ops Complete,Milestone,New,,2029-09-19,18001,Operations,Q3-2029,David Lee,automation,2
+18003,Self-Healing Infrastructure,Feature,New,2029-04-09,2029-05-30,18001,Operations,Q2-2029,Emily Clark,resilience,2
+18004,Automated Incident Response,Feature,New,2029-05-12,2029-07-11,18001,Operations,Q2-2029,Chris Martinez,incidents,2
+18005,Capacity Auto-Scaling,Feature,New,2029-06-23,2029-09-19,18001,Operations,Q3-2029,David Lee,scaling,2
+19001,Sustainability Dashboard,Epic,New,2029-06-11,2029-11-15,,Sustainability,Q2-2029,Rachel Kim,green-tech,3
+19002,Sustainability Complete,Milestone,New,,2029-11-15,19001,Sustainability,Q4-2029,Rachel Kim,green-tech,3
+19003,Carbon Footprint Tracking,Feature,New,2029-06-11,2029-07-31,19001,Sustainability,Q3-2029,James Wilson,carbon,3
+19004,Energy Optimization,Feature,New,2029-07-14,2029-09-12,19001,Sustainability,Q3-2029,Nina Patel,energy,3
+19005,Sustainability Reporting,Feature,New,2029-08-18,2029-10-11,19001,Sustainability,Q4-2029,Kevin Zhang,reporting,3
+19006,Green Cloud Migration,Feature,New,2029-09-22,2029-11-15,19001,Sustainability,Q4-2029,Rachel Kim,cloud,3
+20001,Next-Gen Analytics,Epic,New,2029-09-03,2030-02-07,,Analytics,Q3-2029,Marcus Thompson,analytics,4
+20002,Analytics Platform Complete,Milestone,New,,2030-02-07,20001,Analytics,Q1-2030,Marcus Thompson,analytics,4
+20003,Unified Data Model,Feature,New,2029-09-03,2029-10-18,20001,Analytics,Q4-2029,Amy Rodriguez,data-model,4
+20004,Real-Time Dashboards,Feature,New,2029-09-30,2029-11-28,20001,Analytics,Q4-2029,Derek Moore,dashboards,4
+20005,Predictive Insights,Feature,New,2029-11-04,2030-01-03,20001,Analytics,Q1-2030,Sophie Turner,predictions,4
+20006,Self-Service BI Tools,Feature,New,2029-12-09,2030-02-07,20001,Analytics,Q1-2030,Marcus Thompson,bi-tools,4
