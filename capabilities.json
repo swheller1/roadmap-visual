@@ -40,19 +40,25 @@
       "name": "parentId",
       "displayName": "Parent ID",
       "kind": "Grouping",
-      "description": "Parent work item ID for hierarchy"
+      "description": "Parent work item ID for hierarchy (e.g., Epic ID for Features)"
+    },
+    {
+      "name": "predecessorId",
+      "displayName": "Predecessor ID",
+      "kind": "Grouping",
+      "description": "ID of predecessor work item for dependency lines"
     },
     {
       "name": "areaPath",
-      "displayName": "Area Path",
+      "displayName": "Area Path / Scheme",
       "kind": "Grouping",
-      "description": "Area path for swimlane grouping"
+      "description": "Area path or scheme for grouping (e.g., Program, Portfolio)"
     },
     {
       "name": "iterationPath",
       "displayName": "Iteration Path",
       "kind": "Grouping",
-      "description": "Iteration path for swimlane grouping"
+      "description": "Iteration path for grouping"
     },
     {
       "name": "assignedTo",
@@ -84,6 +90,7 @@
           "startDate": { "max": 1 },
           "targetDate": { "max": 1 },
           "parentId": { "max": 1 },
+          "predecessorId": { "max": 1 },
           "areaPath": { "max": 1 },
           "iterationPath": { "max": 1 },
           "assignedTo": { "max": 1 },
@@ -101,6 +108,7 @@
             { "for": { "in": "startDate" } },
             { "for": { "in": "targetDate" } },
             { "for": { "in": "parentId" } },
+            { "for": { "in": "predecessorId" } },
             { "for": { "in": "areaPath" } },
             { "for": { "in": "iterationPath" } },
             { "for": { "in": "assignedTo" } },
@@ -128,19 +136,17 @@
         }
       }
     },
-    "swimlanes": {
-      "displayName": "Swimlanes",
+    "organization": {
+      "displayName": "Organization",
+      "description": "Configure how work items are grouped and displayed",
       "properties": {
-        "show": {
-          "displayName": "Show Swimlanes",
-          "type": { "bool": true }
-        },
         "groupBy": {
-          "displayName": "Group By",
+          "displayName": "Group Rows By",
+          "description": "Choose how to group the top-level rows",
           "type": {
             "enumeration": [
-              { "value": "none", "displayName": "None" },
-              { "value": "areaPath", "displayName": "Area Path" },
+              { "value": "epic", "displayName": "Epic (Parent hierarchy)" },
+              { "value": "areaPath", "displayName": "Area Path / Scheme" },
               { "value": "iterationPath", "displayName": "Iteration Path" },
               { "value": "assignedTo", "displayName": "Assigned To" },
               { "value": "state", "displayName": "State" },
@@ -148,6 +154,59 @@
               { "value": "tags", "displayName": "Tags" }
             ]
           }
+        },
+        "showHierarchy": {
+          "displayName": "Show Hierarchy",
+          "description": "Display items in a collapsible tree structure",
+          "type": { "bool": true }
+        },
+        "defaultExpanded": {
+          "displayName": "Default Expanded",
+          "description": "Expand all groups by default",
+          "type": { "bool": true }
+        }
+      }
+    },
+    "levels": {
+      "displayName": "Visible Levels",
+      "description": "Choose which work item types to display",
+      "properties": {
+        "showEpics": {
+          "displayName": "Show Epics",
+          "type": { "bool": true }
+        },
+        "showFeatures": {
+          "displayName": "Show Features",
+          "type": { "bool": true }
+        },
+        "showMilestones": {
+          "displayName": "Show Milestones",
+          "type": { "bool": true }
+        }
+      }
+    },
+    "dependencies": {
+      "displayName": "Dependencies",
+      "description": "Configure dependency line display",
+      "properties": {
+        "show": {
+          "displayName": "Show Dependency Lines",
+          "description": "Draw lines between parent and child items",
+          "type": { "bool": true }
+        },
+        "showParentChild": {
+          "displayName": "Show Parent-Child Links",
+          "description": "Draw lines from Epics to their Features/Milestones",
+          "type": { "bool": true }
+        },
+        "showPredecessors": {
+          "displayName": "Show Predecessor Links",
+          "description": "Draw lines based on Predecessor ID field",
+          "type": { "bool": true }
+        },
+        "lineColor": {
+          "displayName": "Line Color",
+          "type": { "fill": { "solid": { "color": true } } }
         }
       }
     },
@@ -165,32 +224,6 @@
         "featureColor": {
           "displayName": "Feature Color",
           "type": { "fill": { "solid": { "color": true } } }
-        }
-      }
-    },
-    "dependencies": {
-      "displayName": "Dependencies",
-      "properties": {
-        "show": {
-          "displayName": "Show Dependencies",
-          "type": { "bool": true }
-        }
-      }
-    },
-    "levels": {
-      "displayName": "Levels",
-      "properties": {
-        "showEpics": {
-          "displayName": "Show Epics",
-          "type": { "bool": true }
-        },
-        "showFeatures": {
-          "displayName": "Show Features",
-          "type": { "bool": true }
-        },
-        "showMilestones": {
-          "displayName": "Show Milestones",
-          "type": { "bool": true }
         }
       }
     },

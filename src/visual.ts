@@ -1,13 +1,15 @@
 /*
  *  Roadmap Visual for Power BI
  *  Certification-compliant version
- *  
+ *
  *  Features:
  *  - Rendering Events API (required for certification)
  *  - Context Menu support
  *  - Safe DOM manipulation (no innerHTML)
  *  - Localization ready
  *  - No external service calls
+ *  - Dependency line rendering
+ *  - Flexible grouping options
  */
 
 "use strict";
@@ -35,6 +37,7 @@ interface WorkItem {
     startDate: Date | null;
     targetDate: Date | null;
     parentId: string | null;
+    predecessorId: string | null;
     areaPath: string;
     iterationPath: string;
     assignedTo: string;
@@ -46,12 +49,19 @@ interface WorkItem {
 interface VisualSettings {
     title: string;
     subtitle: string;
-    showSwimlanes: boolean;
-    swimlaneGroupBy: string;
+    // Organization settings
+    groupBy: string;
+    showHierarchy: boolean;
+    defaultExpanded: boolean;
+    // Colors
     epicColor: string;
     milestoneColor: string;
     featureColor: string;
+    // Dependencies
     showDependencies: boolean;
+    showParentChild: boolean;
+    showPredecessors: boolean;
+    dependencyLineColor: string;
     // Level display settings
     showEpics: boolean;
     showFeatures: boolean;
@@ -72,11 +82,12 @@ interface RowData {
     collapsed?: boolean;
     isParent?: boolean;
     childCount?: number;
+    level?: number;
 }
 
 // Constants
 const TYPES = ['Epic', 'Milestone', 'Feature'];
-const ROW_HEIGHT: { [key: string]: number } = { Epic: 48, Milestone: 40, Feature: 44, SwimlaneHeader: 44 };
+const ROW_HEIGHT: { [key: string]: number } = { Epic: 48, Milestone: 40, Feature: 44, GroupHeader: 44 };
 const BAR_HEIGHT: { [key: string]: number } = { Epic: 32, Milestone: 18, Feature: 28 };
 
 export class RoadmapVisual implements IVisual {
@@ -87,11 +98,12 @@ export class RoadmapVisual implements IVisual {
     private collapsed: Set<string> = new Set();
     private viewStart: Date = new Date();
     private selectionManager: ISelectionManager;
+    private rowPositions: Map<string, { y: number; height: number }> = new Map();
 
     constructor(options: VisualConstructorOptions) {
         this.host = options.host;
         this.selectionManager = options.host.createSelectionManager();
-        
+
         // Register context menu handler
         this.selectionManager.registerOnSelectCallback(() => {
             // Handle selection changes
@@ -100,7 +112,7 @@ export class RoadmapVisual implements IVisual {
         this.container = d3.select(options.element)
             .append("div")
             .classed("roadmap-container", true);
-        
+
         // Set up context menu on container
         this.container.on("contextmenu", (event: MouseEvent) => {
             event.preventDefault();
@@ -113,12 +125,16 @@ export class RoadmapVisual implements IVisual {
         this.settings = {
             title: "Roadmap",
             subtitle: "Work Items",
-            showSwimlanes: false,
-            swimlaneGroupBy: "none",
+            groupBy: "epic",
+            showHierarchy: true,
+            defaultExpanded: true,
             epicColor: "#4F46E5",
             milestoneColor: "#DC2626",
             featureColor: "#0891B2",
-            showDependencies: true,
+            showDependencies: false,
+            showParentChild: true,
+            showPredecessors: true,
+            dependencyLineColor: "#94A3B8",
             showEpics: true,
             showFeatures: true,
             showMilestones: true,
@@ -135,6 +151,7 @@ export class RoadmapVisual implements IVisual {
         try {
             // Clear previous content
             this.container.selectAll("*").remove();
+            this.rowPositions.clear();
 
             // Validate data
             if (!options.dataViews || !options.dataViews[0]) {
@@ -144,7 +161,7 @@ export class RoadmapVisual implements IVisual {
             }
 
             const dataView = options.dataViews[0];
-            
+
             // Parse data and settings
             this.parseData(dataView);
             this.parseSettings(dataView);
@@ -156,15 +173,15 @@ export class RoadmapVisual implements IVisual {
             }
 
             // Calculate timeline bounds
-            const dates = this.workItems.flatMap(w => 
+            const dates = this.workItems.flatMap(w =>
                 [w.startDate, w.targetDate].filter((d): d is Date => d !== null)
             );
-            
-            const minDate = dates.length > 0 
-                ? new Date(Math.min(...dates.map(d => d.getTime()))) 
+
+            const minDate = dates.length > 0
+                ? new Date(Math.min(...dates.map(d => d.getTime())))
                 : new Date();
-            const maxDate = dates.length > 0 
-                ? new Date(Math.max(...dates.map(d => d.getTime()))) 
+            const maxDate = dates.length > 0
+                ? new Date(Math.max(...dates.map(d => d.getTime())))
                 : this.addDays(new Date(), 90);
 
             this.viewStart = this.addDays(minDate, -14);
@@ -191,7 +208,7 @@ export class RoadmapVisual implements IVisual {
         }
 
         const categories = categorical.categories;
-        const getColumn = (name: string) => 
+        const getColumn = (name: string) =>
             categories.find(c => c.source.roles && c.source.roles[name]);
 
         const idCol = getColumn("workItemId");
@@ -201,6 +218,7 @@ export class RoadmapVisual implements IVisual {
         const startCol = getColumn("startDate");
         const targetCol = getColumn("targetDate");
         const parentCol = getColumn("parentId");
+        const predecessorCol = getColumn("predecessorId");
         const areaCol = getColumn("areaPath");
         const iterCol = getColumn("iterationPath");
         const assignCol = getColumn("assignedTo");
@@ -217,6 +235,7 @@ export class RoadmapVisual implements IVisual {
             const workItemId = Number(idCol.values[i]) || 0;
             const type = this.sanitizeString(String(typeCol.values[i] || "Feature"));
             const parentVal = parentCol?.values[i];
+            const predecessorVal = predecessorCol?.values[i];
 
             // Create selection ID for interactivity
             const selectionId = this.host.createSelectionIdBuilder()
@@ -232,6 +251,7 @@ export class RoadmapVisual implements IVisual {
                 startDate: this.parseDate(startCol?.values[i]),
                 targetDate: this.parseDate(targetCol?.values[i]),
                 parentId: parentVal ? `E-${parentVal}` : null,
+                predecessorId: predecessorVal ? String(predecessorVal) : null,
                 areaPath: this.sanitizeString(String(areaCol?.values[i] || "")),
                 iterationPath: this.sanitizeString(String(iterCol?.values[i] || "")),
                 assignedTo: this.sanitizeString(String(assignCol?.values[i] || "")),
@@ -250,9 +270,10 @@ export class RoadmapVisual implements IVisual {
             this.settings.title = this.sanitizeString(String(objects.general.title || this.settings.title));
             this.settings.subtitle = this.sanitizeString(String(objects.general.subtitle || this.settings.subtitle));
         }
-        if (objects.swimlanes) {
-            this.settings.showSwimlanes = Boolean(objects.swimlanes.show);
-            this.settings.swimlaneGroupBy = this.sanitizeString(String(objects.swimlanes.groupBy || "none"));
+        if (objects.organization) {
+            this.settings.groupBy = this.sanitizeString(String(objects.organization.groupBy || "epic"));
+            this.settings.showHierarchy = objects.organization.showHierarchy !== false;
+            this.settings.defaultExpanded = objects.organization.defaultExpanded !== false;
         }
         if (objects.colors) {
             const getColor = (obj: any): string | undefined => obj?.solid?.color;
@@ -262,6 +283,10 @@ export class RoadmapVisual implements IVisual {
         }
         if (objects.dependencies) {
             this.settings.showDependencies = Boolean(objects.dependencies.show);
+            this.settings.showParentChild = objects.dependencies.showParentChild !== false;
+            this.settings.showPredecessors = objects.dependencies.showPredecessors !== false;
+            const lineColor = (objects.dependencies.lineColor as any)?.solid?.color;
+            if (lineColor) this.settings.dependencyLineColor = lineColor;
         }
         if (objects.levels) {
             this.settings.showEpics = objects.levels.showEpics !== false;
@@ -337,10 +362,19 @@ export class RoadmapVisual implements IVisual {
         this.renderGrid(timelineInner, totalDays, dayWidth, viewEnd);
         this.renderTodayLine(timelineInner, viewEnd, dayWidth);
 
+        // Render rows and store positions
         rows.forEach(row => {
             this.renderLeftRow(leftBody, row);
             this.renderTimelineRow(timelineInner, row, dayWidth);
+            if (row.data) {
+                this.rowPositions.set(row.data.id, { y: row.y, height: row.height });
+            }
         });
+
+        // Render dependency lines if enabled
+        if (this.settings.showDependencies) {
+            this.renderDependencyLines(timelineInner, rows, dayWidth);
+        }
 
         // Sync scroll (disabled in PDF mode)
         if (!this.settings.pdfMode) {
@@ -381,7 +415,8 @@ export class RoadmapVisual implements IVisual {
             return true;
         });
 
-        if (!this.settings.showSwimlanes || this.settings.swimlaneGroupBy === "none") {
+        if (this.settings.groupBy === "epic") {
+            // Group by Epic (parent hierarchy)
             const epics = visibleItems.filter(w => w.type === "Epic");
             const nonEpicItems = visibleItems.filter(w => w.type !== "Epic");
 
@@ -389,33 +424,49 @@ export class RoadmapVisual implements IVisual {
             epics.forEach(epic => {
                 const isCollapsed = this.collapsed.has(epic.id) && !this.settings.pdfMode;
                 const children = nonEpicItems.filter(w => w.parentId === epic.id);
-                rows.push({ type: "Epic", data: epic, y, height: ROW_HEIGHT.Epic, collapsed: isCollapsed, isParent: true, childCount: children.length });
+                rows.push({ type: "Epic", data: epic, y, height: ROW_HEIGHT.Epic, collapsed: isCollapsed, isParent: true, childCount: children.length, level: 0 });
                 y += ROW_HEIGHT.Epic;
-                if (!isCollapsed) {
-                    children.filter(c => c.type === "Milestone").forEach(m => { rows.push({ type: "Milestone", data: m, y, height: ROW_HEIGHT.Milestone }); y += ROW_HEIGHT.Milestone; });
-                    children.filter(c => c.type === "Feature").forEach(f => { rows.push({ type: "Feature", data: f, y, height: ROW_HEIGHT.Feature }); y += ROW_HEIGHT.Feature; });
+                if (!isCollapsed && this.settings.showHierarchy) {
+                    // First show milestones (they're key dates)
+                    children.filter(c => c.type === "Milestone").forEach(m => {
+                        rows.push({ type: "Milestone", data: m, y, height: ROW_HEIGHT.Milestone, level: 1 });
+                        y += ROW_HEIGHT.Milestone;
+                    });
+                    // Then show features
+                    children.filter(c => c.type === "Feature").forEach(f => {
+                        rows.push({ type: "Feature", data: f, y, height: ROW_HEIGHT.Feature, level: 1 });
+                        y += ROW_HEIGHT.Feature;
+                    });
                 }
             });
 
-            // If epics are hidden, show features/milestones directly
+            // Show orphan items (no parent) if epics are hidden
             if (!this.settings.showEpics) {
                 nonEpicItems.forEach(item => {
                     const h = ROW_HEIGHT[item.type] || ROW_HEIGHT.Feature;
-                    rows.push({ type: item.type, data: item, y, height: h });
+                    rows.push({ type: item.type, data: item, y, height: h, level: 0 });
                     y += h;
                 });
             }
         } else {
+            // Group by another field (Area Path, Iteration, Assigned To, etc.)
             const groups = new Map<string, WorkItem[]>();
-            visibleItems.forEach(item => { const key = this.getSwimlaneKey(item); if (!groups.has(key)) groups.set(key, []); groups.get(key)!.push(item); });
+            visibleItems.forEach(item => {
+                const key = this.getGroupKey(item);
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key)!.push(item);
+            });
+
             [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([name, items]) => {
-                const isCollapsed = this.collapsed.has(`sw-${name}`) && !this.settings.pdfMode;
-                rows.push({ type: "Swimlane", name, y, height: ROW_HEIGHT.SwimlaneHeader, collapsed: isCollapsed, childCount: items.length });
-                y += ROW_HEIGHT.SwimlaneHeader;
-                if (!isCollapsed) {
+                const isCollapsed = this.collapsed.has(`grp-${name}`) && !this.settings.pdfMode;
+                rows.push({ type: "GroupHeader", name, y, height: ROW_HEIGHT.GroupHeader, collapsed: isCollapsed, isParent: true, childCount: items.length, level: 0 });
+                y += ROW_HEIGHT.GroupHeader;
+
+                if (!isCollapsed && this.settings.showHierarchy) {
+                    // Sort by type: Epic first, then Milestone, then Feature
                     items.sort((a, b) => TYPES.indexOf(a.type) - TYPES.indexOf(b.type)).forEach(item => {
                         const h = ROW_HEIGHT[item.type] || ROW_HEIGHT.Feature;
-                        rows.push({ type: item.type, data: item, y, height: h });
+                        rows.push({ type: item.type, data: item, y, height: h, level: 1 });
                         y += h;
                     });
                 }
@@ -424,48 +475,217 @@ export class RoadmapVisual implements IVisual {
         return rows;
     }
 
-    private getSwimlaneKey(item: WorkItem): string {
-        const field = this.settings.swimlaneGroupBy as keyof WorkItem;
+    private getGroupKey(item: WorkItem): string {
+        const fieldMap: { [key: string]: keyof WorkItem } = {
+            areaPath: 'areaPath',
+            iterationPath: 'iterationPath',
+            assignedTo: 'assignedTo',
+            state: 'state',
+            priority: 'priority',
+            tags: 'tags'
+        };
+        const field = fieldMap[this.settings.groupBy] || 'areaPath';
         const value = item[field];
         if (!value) return "Unassigned";
-        if (field === "areaPath" || field === "iterationPath") { const parts = String(value).split("\\"); return parts[parts.length - 1] || String(value); }
+        if (field === "areaPath" || field === "iterationPath") {
+            const parts = String(value).split("\\");
+            return parts[parts.length - 1] || String(value);
+        }
         return String(value);
     }
 
     private renderLeftRow(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, row: RowData): void {
-        const rowEl = container.append("div").classed("row", true).classed("row-parent", row.isParent || false).classed("row-swimlane", row.type === "Swimlane").style("height", `${row.height}px`);
-        if (row.type === "Swimlane") {
+        const indent = (row.level || 0) * 16;
+        const rowEl = container.append("div")
+            .classed("row", true)
+            .classed("row-parent", row.isParent || false)
+            .classed("row-group-header", row.type === "GroupHeader")
+            .classed("row-child", (row.level || 0) > 0)
+            .style("height", `${row.height}px`)
+            .style("padding-left", `${10 + indent}px`);
+
+        if (row.type === "GroupHeader") {
             rowEl.append("span").classed("row-chevron", true).text(row.collapsed ? "▶" : "▼");
             rowEl.append("span").classed("row-title", true).text(row.name || "");
             rowEl.append("span").classed("row-count", true).text(String(row.childCount || 0));
-            rowEl.on("click", () => this.toggleCollapse(`sw-${row.name}`));
+            rowEl.on("click", () => this.toggleCollapse(`grp-${row.name}`));
         } else if (row.data) {
             rowEl.append("div").classed("row-indicator", true).style("background", this.getColor(row.type));
-            if (row.isParent) rowEl.append("span").classed("row-chevron", true).text(row.collapsed ? "▶" : "▼");
+            if (row.isParent) {
+                rowEl.append("span").classed("row-chevron", true).text(row.collapsed ? "▶" : "▼");
+            }
             rowEl.append("span").classed("row-id", true).text(String(row.data.workItemId));
             rowEl.append("span").classed("row-title", true).text(row.data.title);
+            if (row.childCount !== undefined && row.childCount > 0) {
+                rowEl.append("span").classed("row-count", true).text(String(row.childCount));
+            }
             if (row.isParent) rowEl.on("click", () => this.toggleCollapse(row.data!.id));
-            rowEl.on("contextmenu", (event: MouseEvent) => { event.preventDefault(); event.stopPropagation(); if (row.data?.selectionId) this.selectionManager.showContextMenu(row.data.selectionId, { x: event.clientX, y: event.clientY }); });
-            if (!row.isParent) rowEl.on("click", (event: MouseEvent) => { if (row.data?.selectionId) this.selectionManager.select(row.data.selectionId, event.ctrlKey || event.metaKey); });
+            rowEl.on("contextmenu", (event: MouseEvent) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (row.data?.selectionId) this.selectionManager.showContextMenu(row.data.selectionId, { x: event.clientX, y: event.clientY });
+            });
+            if (!row.isParent) rowEl.on("click", (event: MouseEvent) => {
+                if (row.data?.selectionId) this.selectionManager.select(row.data.selectionId, event.ctrlKey || event.metaKey);
+            });
         }
     }
 
     private renderTimelineRow(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, row: RowData, dayWidth: number): void {
-        const rowEl = container.append("div").classed("tl-row", true).classed("tl-row-parent", row.isParent || false).classed("tl-row-swimlane", row.type === "Swimlane").style("top", `${row.y}px`).style("height", `${row.height}px`);
-        if (row.type === "Swimlane" || !row.data) return;
+        const rowEl = container.append("div")
+            .classed("tl-row", true)
+            .classed("tl-row-parent", row.isParent || false)
+            .classed("tl-row-group-header", row.type === "GroupHeader")
+            .style("top", `${row.y}px`)
+            .style("height", `${row.height}px`);
+
+        if (row.type === "GroupHeader" || !row.data) return;
+
         const item = row.data, color = this.getColor(row.type);
+
         if (row.type === "Milestone") {
             if (!item.targetDate) return;
             const x = this.daysBetween(this.viewStart, item.targetDate) * dayWidth, size = BAR_HEIGHT.Milestone;
-            const el = rowEl.append("div").classed("milestone", true).style("left", `${x - size/2}px`).style("top", `${(row.height - size)/2}px`).style("width", `${size}px`).style("height", `${size}px`).style("background", color).attr("title", `${item.workItemId}: ${item.title}`);
+            const el = rowEl.append("div")
+                .classed("milestone", true)
+                .attr("data-id", item.id)
+                .style("left", `${x - size/2}px`)
+                .style("top", `${(row.height - size)/2}px`)
+                .style("width", `${size}px`)
+                .style("height", `${size}px`)
+                .style("background", color)
+                .attr("title", `${item.workItemId}: ${item.title}`);
             this.addBarInteractivity(el, item);
         } else {
             if (!item.startDate || !item.targetDate) return;
-            const startX = this.daysBetween(this.viewStart, item.startDate) * dayWidth, endX = this.daysBetween(this.viewStart, item.targetDate) * dayWidth;
-            const width = Math.max(endX - startX + dayWidth, 30), barHeight = BAR_HEIGHT[row.type] || BAR_HEIGHT.Feature;
-            const bar = rowEl.append("div").classed("bar", true).style("left", `${startX}px`).style("width", `${width}px`).style("height", `${barHeight}px`).style("top", `${(row.height - barHeight)/2}px`).style("background", color).attr("title", `${item.workItemId}: ${item.title}`);
+            const startX = this.daysBetween(this.viewStart, item.startDate) * dayWidth;
+            const endX = this.daysBetween(this.viewStart, item.targetDate) * dayWidth;
+            const width = Math.max(endX - startX + dayWidth, 30);
+            const barHeight = BAR_HEIGHT[row.type] || BAR_HEIGHT.Feature;
+            const bar = rowEl.append("div")
+                .classed("bar", true)
+                .attr("data-id", item.id)
+                .style("left", `${startX}px`)
+                .style("width", `${width}px`)
+                .style("height", `${barHeight}px`)
+                .style("top", `${(row.height - barHeight)/2}px`)
+                .style("background", color)
+                .attr("title", `${item.workItemId}: ${item.title}`);
             if (width > 50) bar.append("span").classed("bar-label", true).text(`${item.workItemId} · ${item.title}`);
             this.addBarInteractivity(bar, item);
+        }
+    }
+
+    private renderDependencyLines(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, rows: RowData[], dayWidth: number): void {
+        // Create SVG layer for dependency lines
+        const svgContainer = container.append("svg")
+            .classed("dependency-layer", true)
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .style("position", "absolute")
+            .style("top", "0")
+            .style("left", "0")
+            .style("pointer-events", "none")
+            .style("z-index", "20");
+
+        const lineColor = this.settings.dependencyLineColor;
+
+        // Draw parent-child dependency lines
+        if (this.settings.showParentChild) {
+            rows.forEach(row => {
+                if (!row.data || row.type === "GroupHeader") return;
+
+                const item = row.data;
+                if (!item.parentId) return;
+
+                // Find parent row
+                const parentRow = rows.find(r => r.data?.id === item.parentId);
+                if (!parentRow || !parentRow.data) return;
+
+                // Calculate line coordinates
+                const parentItem = parentRow.data;
+                const parentEndX = parentItem.targetDate
+                    ? this.daysBetween(this.viewStart, parentItem.targetDate) * dayWidth
+                    : 0;
+                const childStartX = item.startDate
+                    ? this.daysBetween(this.viewStart, item.startDate) * dayWidth
+                    : (item.targetDate ? this.daysBetween(this.viewStart, item.targetDate) * dayWidth : 0);
+
+                const parentY = parentRow.y + parentRow.height / 2;
+                const childY = row.y + row.height / 2;
+
+                if (parentEndX > 0 && childStartX > 0) {
+                    // Draw curved connector line
+                    const midX = (parentEndX + childStartX) / 2;
+                    svgContainer.append("path")
+                        .attr("d", `M ${parentEndX} ${parentY} C ${midX} ${parentY}, ${midX} ${childY}, ${childStartX} ${childY}`)
+                        .attr("fill", "none")
+                        .attr("stroke", lineColor)
+                        .attr("stroke-width", "1.5")
+                        .attr("stroke-dasharray", "4,2")
+                        .attr("opacity", "0.6");
+
+                    // Arrow at child end
+                    svgContainer.append("circle")
+                        .attr("cx", childStartX)
+                        .attr("cy", childY)
+                        .attr("r", "3")
+                        .attr("fill", lineColor)
+                        .attr("opacity", "0.8");
+                }
+            });
+        }
+
+        // Draw predecessor dependency lines
+        if (this.settings.showPredecessors) {
+            rows.forEach(row => {
+                if (!row.data || row.type === "GroupHeader") return;
+
+                const item = row.data;
+                if (!item.predecessorId) return;
+
+                // Find predecessor - could be by workItemId
+                const predecessorRow = rows.find(r =>
+                    r.data && (
+                        r.data.workItemId === Number(item.predecessorId) ||
+                        r.data.id === item.predecessorId ||
+                        r.data.id === `E-${item.predecessorId}` ||
+                        r.data.id === `F-${item.predecessorId}` ||
+                        r.data.id === `M-${item.predecessorId}`
+                    )
+                );
+
+                if (!predecessorRow || !predecessorRow.data) return;
+
+                const predItem = predecessorRow.data;
+                const predEndX = predItem.targetDate
+                    ? this.daysBetween(this.viewStart, predItem.targetDate) * dayWidth
+                    : 0;
+                const itemStartX = item.startDate
+                    ? this.daysBetween(this.viewStart, item.startDate) * dayWidth
+                    : (item.targetDate ? this.daysBetween(this.viewStart, item.targetDate) * dayWidth : 0);
+
+                const predY = predecessorRow.y + predecessorRow.height / 2;
+                const itemY = row.y + row.height / 2;
+
+                if (predEndX > 0 && itemStartX > 0) {
+                    // Draw solid connector line for explicit dependencies
+                    const midX = (predEndX + itemStartX) / 2;
+                    svgContainer.append("path")
+                        .attr("d", `M ${predEndX} ${predY} C ${midX} ${predY}, ${midX} ${itemY}, ${itemStartX} ${itemY}`)
+                        .attr("fill", "none")
+                        .attr("stroke", lineColor)
+                        .attr("stroke-width", "2")
+                        .attr("opacity", "0.8");
+
+                    // Arrow at destination
+                    const arrowSize = 6;
+                    svgContainer.append("polygon")
+                        .attr("points", `${itemStartX},${itemY} ${itemStartX - arrowSize},${itemY - arrowSize/2} ${itemStartX - arrowSize},${itemY + arrowSize/2}`)
+                        .attr("fill", lineColor)
+                        .attr("opacity", "0.8");
+                }
+            });
         }
     }
 
@@ -494,7 +714,6 @@ export class RoadmapVisual implements IVisual {
     }
 
     private renderDailyHeaders(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
-        // Render month row first
         let current = new Date(this.viewStart);
         while (current <= viewEnd) {
             if (current.getDate() === 1 || current.getTime() === this.viewStart.getTime()) {
@@ -505,14 +724,12 @@ export class RoadmapVisual implements IVisual {
             }
             current = this.addDays(current, 1);
         }
-        // Render day labels if zoomed in enough
         if (dayWidth >= 20) {
             current = new Date(this.viewStart);
             let i = 0;
             while (current <= viewEnd) {
                 const x = i * dayWidth;
-                const dayEl = container.append("div").classed("day-cell", true).style("left", `${x}px`).style("width", `${dayWidth}px`).style("top", "28px");
-                dayEl.text(current.getDate().toString());
+                container.append("div").classed("day-cell", true).style("left", `${x}px`).style("width", `${dayWidth}px`).style("top", "28px").text(current.getDate().toString());
                 current = this.addDays(current, 1);
                 i++;
             }
@@ -520,7 +737,6 @@ export class RoadmapVisual implements IVisual {
     }
 
     private renderWeeklyHeaders(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
-        // Render month row first
         let current = new Date(this.viewStart);
         while (current <= viewEnd) {
             if (current.getDate() === 1 || current.getTime() === this.viewStart.getTime()) {
@@ -531,20 +747,16 @@ export class RoadmapVisual implements IVisual {
             }
             current = this.addDays(current, 1);
         }
-        // Render week labels
         current = new Date(this.viewStart);
-        // Move to Monday
         const dayOfWeek = current.getDay();
         const daysToMonday = dayOfWeek === 0 ? 1 : (dayOfWeek === 1 ? 0 : 8 - dayOfWeek);
         current = this.addDays(current, daysToMonday);
-
         while (current <= viewEnd) {
             const x = this.daysBetween(this.viewStart, current) * dayWidth;
             const weekEnd = this.addDays(current, 6);
             const effectiveEnd = weekEnd > viewEnd ? viewEnd : weekEnd;
             const width = this.daysBetween(current, effectiveEnd) * dayWidth + dayWidth;
-            const weekNum = this.getWeekNumber(current);
-            container.append("div").classed("week-cell", true).style("left", `${x}px`).style("width", `${width}px`).style("top", "28px").text(`W${weekNum}`);
+            container.append("div").classed("week-cell", true).style("left", `${x}px`).style("width", `${width}px`).style("top", "28px").text(`W${this.getWeekNumber(current)}`);
             current = this.addDays(current, 7);
         }
     }
@@ -563,14 +775,11 @@ export class RoadmapVisual implements IVisual {
     }
 
     private renderAnnualHeaders(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
-        // Render year row
         let current = new Date(this.viewStart);
         let currentYear = current.getFullYear();
         let yearStartX = 0;
-
         while (current <= viewEnd) {
             if (current.getFullYear() !== currentYear) {
-                // Render previous year
                 const width = this.daysBetween(this.viewStart, current) * dayWidth - yearStartX;
                 container.append("div").classed("year-cell", true).style("left", `${yearStartX}px`).style("width", `${width}px`).text(String(currentYear));
                 yearStartX = this.daysBetween(this.viewStart, current) * dayWidth;
@@ -578,16 +787,12 @@ export class RoadmapVisual implements IVisual {
             }
             current = this.addDays(current, 1);
         }
-        // Render last year
         const totalWidth = this.daysBetween(this.viewStart, viewEnd) * dayWidth + dayWidth;
         container.append("div").classed("year-cell", true).style("left", `${yearStartX}px`).style("width", `${totalWidth - yearStartX}px`).text(String(currentYear));
-
-        // Render quarter labels
         current = new Date(this.viewStart);
         while (current <= viewEnd) {
             const quarter = Math.floor(current.getMonth() / 3) + 1;
-            const quarterStart = new Date(current.getFullYear(), (quarter - 1) * 3, 1);
-            if (current.getTime() === quarterStart.getTime() || (current.getMonth() % 3 === 0 && current.getDate() === 1) || current.getTime() === this.viewStart.getTime()) {
+            if ((current.getMonth() % 3 === 0 && current.getDate() === 1) || current.getTime() === this.viewStart.getTime()) {
                 const x = this.daysBetween(this.viewStart, current) * dayWidth;
                 const quarterEnd = new Date(current.getFullYear(), quarter * 3, 0);
                 const effectiveEnd = quarterEnd > viewEnd ? viewEnd : quarterEnd;
@@ -609,7 +814,6 @@ export class RoadmapVisual implements IVisual {
     private renderGrid(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, totalDays: number, dayWidth: number, viewEnd: Date): void {
         switch (this.settings.timeScale) {
             case 'daily':
-                // Grid line per day
                 for (let i = 0; i < totalDays; i++) {
                     const date = this.addDays(this.viewStart, i);
                     const isMonth = date.getDate() === 1;
@@ -618,7 +822,6 @@ export class RoadmapVisual implements IVisual {
                 }
                 break;
             case 'weekly':
-                // Grid line per week (on Mondays)
                 for (let i = 0; i < totalDays; i++) {
                     const date = this.addDays(this.viewStart, i);
                     const isMonth = date.getDate() === 1;
@@ -629,7 +832,6 @@ export class RoadmapVisual implements IVisual {
                 }
                 break;
             case 'monthly':
-                // Grid line per month
                 for (let i = 0; i < totalDays; i++) {
                     const date = this.addDays(this.viewStart, i);
                     if (date.getDate() === 1) {
@@ -638,7 +840,6 @@ export class RoadmapVisual implements IVisual {
                 }
                 break;
             case 'annual':
-                // Grid lines per quarter/year
                 for (let i = 0; i < totalDays; i++) {
                     const date = this.addDays(this.viewStart, i);
                     const isYear = date.getMonth() === 0 && date.getDate() === 1;
@@ -659,7 +860,6 @@ export class RoadmapVisual implements IVisual {
         }
     }
 
-    // Safe empty state - NO innerHTML (certification requirement)
     private renderEmptyState(message: string): void {
         const empty = this.container.append("div").classed("empty-state", true);
         empty.append("div").classed("empty-icon", true).text("📊");
@@ -670,11 +870,41 @@ export class RoadmapVisual implements IVisual {
         help.append("strong").text("Work Item ID, Title, Type");
     }
 
-    private toggleCollapse(key: string): void { if (this.collapsed.has(key)) this.collapsed.delete(key); else this.collapsed.add(key); this.host.refreshHostData(); }
-    private getColor(type: string): string { return type === "Epic" ? this.settings.epicColor : type === "Milestone" ? this.settings.milestoneColor : this.settings.featureColor; }
-    private sanitizeString(str: string): string { return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;") : ""; }
-    private parseDate(value: any): Date | null { if (!value) return null; const d = new Date(value); d.setHours(0, 0, 0, 0); return isNaN(d.getTime()) ? null : d; }
-    private addDays(date: Date, days: number): Date { const r = new Date(date); r.setDate(r.getDate() + days); return r; }
-    private daysBetween(start: Date, end: Date): number { return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)); }
-    public destroy(): void { this.container.selectAll("*").remove(); this.workItems = []; this.collapsed.clear(); }
+    private toggleCollapse(key: string): void {
+        if (this.collapsed.has(key)) this.collapsed.delete(key);
+        else this.collapsed.add(key);
+        this.host.refreshHostData();
+    }
+
+    private getColor(type: string): string {
+        return type === "Epic" ? this.settings.epicColor : type === "Milestone" ? this.settings.milestoneColor : this.settings.featureColor;
+    }
+
+    private sanitizeString(str: string): string {
+        return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;") : "";
+    }
+
+    private parseDate(value: any): Date | null {
+        if (!value) return null;
+        const d = new Date(value);
+        d.setHours(0, 0, 0, 0);
+        return isNaN(d.getTime()) ? null : d;
+    }
+
+    private addDays(date: Date, days: number): Date {
+        const r = new Date(date);
+        r.setDate(r.getDate() + days);
+        return r;
+    }
+
+    private daysBetween(start: Date, end: Date): number {
+        return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    public destroy(): void {
+        this.container.selectAll("*").remove();
+        this.workItems = [];
+        this.collapsed.clear();
+        this.rowPositions.clear();
+    }
 }

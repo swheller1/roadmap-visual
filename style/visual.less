@@ -107,13 +107,22 @@
         }
     }
 
-    &.row-swimlane {
+    &.row-group-header {
         background: @swim;
         cursor: pointer;
         font-weight: 600;
+        border-left: 4px solid @accent;
 
         &:hover {
             background: darken(@swim, 5%);
+        }
+    }
+
+    &.row-child {
+        background: @card;
+
+        &:hover {
+            background: @bg;
         }
     }
 }
@@ -320,6 +329,11 @@
 
     &.tl-row-swimlane {
         background: @swim;
+    }
+
+    &.tl-row-group-header {
+        background: @swim;
+        border-left: 4px solid @accent;
     }
 }
 
