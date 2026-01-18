@@ -182,25 +182,41 @@ class DocumentGenerator {
         return this;
     }
 
-    // Table
+    // Table with text wrapping
     table(headers, rows) {
         const colWidths = this.columnWidths(headers, rows);
-        const rowH = 7;
-        const headerH = 8;
+        const lineH = 4;
+        const cellPadding = 2;
 
-        this.needsNewPage(headerH + rowH * 2);
+        this.doc.setFontSize(8);
+
+        // Calculate wrapped text for all cells
+        const wrapCell = (text, colWidth) => {
+            const cleanText = this.clean(text || '');
+            return this.doc.splitTextToSize(cleanText, colWidth - 4);
+        };
 
         // Header row
-        let x = PAGE.margin.left;
-        this.doc.setFillColor(245, 245, 245);
-        this.doc.rect(PAGE.margin.left, this.y - 5, this.width, headerH, 'F');
-
-        this.doc.setFontSize(9);
         this.doc.setFont('helvetica', 'bold');
-        this.doc.setTextColor(30, 30, 30);
+        const headerWrapped = headers.map((h, i) => wrapCell(h, colWidths[i]));
+        const headerLines = Math.max(...headerWrapped.map(w => w.length), 1);
+        const headerH = headerLines * lineH + cellPadding * 2;
 
-        headers.forEach((h, i) => {
-            this.doc.text(this.truncate(h, colWidths[i] - 3), x + 2, this.y);
+        this.needsNewPage(headerH + 15);
+
+        // Header background
+        this.doc.setFillColor(245, 245, 245);
+        this.doc.rect(PAGE.margin.left, this.y - 4, this.width, headerH, 'F');
+
+        // Header text
+        this.doc.setTextColor(30, 30, 30);
+        let x = PAGE.margin.left;
+        headerWrapped.forEach((lines, i) => {
+            let cellY = this.y;
+            lines.forEach(line => {
+                this.doc.text(line, x + 2, cellY);
+                cellY += lineH;
+            });
             x += colWidths[i];
         });
 
@@ -210,30 +226,40 @@ class DocumentGenerator {
         this.doc.setFont('helvetica', 'normal');
 
         rows.forEach((row, ri) => {
+            // Wrap all cells in this row
+            const rowWrapped = row.map((cell, i) => wrapCell(cell, colWidths[i]));
+            const rowLines = Math.max(...rowWrapped.map(w => w.length), 1);
+            const rowH = rowLines * lineH + cellPadding * 2;
+
             this.needsNewPage(rowH);
 
             // Alternate row shading
             if (ri % 2 === 1) {
                 this.doc.setFillColor(250, 250, 250);
-                this.doc.rect(PAGE.margin.left, this.y - 5, this.width, rowH, 'F');
+                this.doc.rect(PAGE.margin.left, this.y - 4, this.width, rowH, 'F');
             }
 
+            // Render each cell
             x = PAGE.margin.left;
-            row.forEach((cell, ci) => {
-                let text = this.clean(cell || '');
+            rowWrapped.forEach((lines, ci) => {
+                const cellText = row[ci] || '';
 
                 // Status coloring
-                if (/PASS|COMPLIANT|✓|YES/i.test(text)) {
+                if (/PASS|COMPLIANT|✓|YES/i.test(cellText)) {
                     this.doc.setTextColor(34, 120, 60);
-                } else if (/FAIL|NOT\s|NO$/i.test(text)) {
+                } else if (/FAIL|NOT\s|NO$/i.test(cellText)) {
                     this.doc.setTextColor(180, 40, 40);
-                } else if (/PARTIAL|NEEDS/i.test(text)) {
+                } else if (/PARTIAL|NEEDS/i.test(cellText)) {
                     this.doc.setTextColor(160, 120, 0);
                 } else {
                     this.doc.setTextColor(50, 50, 50);
                 }
 
-                this.doc.text(this.truncate(text, colWidths[ci] - 3), x + 2, this.y);
+                let cellY = this.y;
+                lines.forEach(line => {
+                    this.doc.text(line, x + 2, cellY);
+                    cellY += lineH;
+                });
                 x += colWidths[ci];
             });
 
@@ -243,7 +269,7 @@ class DocumentGenerator {
         // Bottom line
         this.doc.setDrawColor(220, 220, 220);
         this.doc.setLineWidth(0.2);
-        this.doc.line(PAGE.margin.left, this.y - 3, PAGE.margin.left + this.width, this.y - 3);
+        this.doc.line(PAGE.margin.left, this.y - 2, PAGE.margin.left + this.width, this.y - 2);
 
         this.y += 6;
         return this;
