@@ -48,6 +48,44 @@ npm run audit
 
 ---
 
+## Security & Compliance
+
+This visual has been assessed for use by Australian Government agencies handling data at **OFFICIAL: Sensitive** and **PROTECTED** classification levels.
+
+### Australian Government Standards
+
+| Framework | Assessment | Details |
+|-----------|------------|---------|
+| **ISM** (Information Security Manual) | **COMPLIANT** | Meets software development and web application security controls |
+| **Essential Eight** | **COMPLIANT** | Applicable controls satisfied |
+| **PSPF** (Protective Security Policy Framework) | **COMPLIANT** | Security classification markings on PDF export |
+| **WCAG 2.1 Level AA** | **PARTIAL** | High contrast mode available; accessibility improvements recommended |
+
+### Security Features
+
+- **Zero Data Egress** — No external API calls, telemetry, or data transmission
+- **Input Sanitization** — XSS prevention via HTML entity encoding
+- **URL Whitelist** — Only `https://`, `http://`, and `data:image/` URLs permitted
+- **Power BI Sandbox** — Runs entirely within Power BI security sandbox
+- **No Persistent Storage** — No localStorage, cookies, or session data
+
+### Classification Suitability
+
+| Classification | Suitability |
+|----------------|-------------|
+| UNOFFICIAL | Suitable |
+| OFFICIAL | Suitable |
+| OFFICIAL: Sensitive | Suitable |
+| PROTECTED | Suitable (with recommendations) |
+
+### Full Security Audit
+
+For detailed ISM control mapping, supply chain analysis, and remediation recommendations, see:
+
+**[Security Audit Report](SECURITY_AUDIT.md)**
+
+---
+
 ## Overview
 
 This guide explains how to build and deploy the Roadmap Visual as a custom Power BI visual (.pbiviz file).
@@ -339,6 +377,7 @@ This visual:
 
 - **[User Manual](USER_MANUAL.md)** — Comprehensive guide for end users
 - **[Test Report](TEST_REPORT.md)** — Comprehensive test report for version 1.0.0.0
+- **[Security Audit](SECURITY_AUDIT.md)** — ISM compliance and security assessment for Australian Government use
 - **[README](README.md)** — This file, for developers and setup
 
 ---
