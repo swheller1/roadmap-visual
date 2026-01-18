@@ -71,6 +71,12 @@
       "displayName": "Tags",
       "kind": "Grouping",
       "description": "Work item tags"
+    },
+    {
+      "name": "scheme",
+      "displayName": "Scheme",
+      "kind": "Grouping",
+      "description": "Color scheme identifier (1-4)"
     }
   ],
   "dataViewMappings": [
@@ -88,7 +94,8 @@
           "iterationPath": { "max": 1 },
           "assignedTo": { "max": 1 },
           "priority": { "max": 1 },
-          "tags": { "max": 1 }
+          "tags": { "max": 1 },
+          "scheme": { "max": 1 }
         }
       ],
       "categorical": {
@@ -105,7 +112,8 @@
             { "for": { "in": "iterationPath" } },
             { "for": { "in": "assignedTo" } },
             { "for": { "in": "priority" } },
-            { "for": { "in": "tags" } }
+            { "for": { "in": "tags" } },
+            { "for": { "in": "scheme" } }
           ],
           "dataReductionAlgorithm": {
             "top": { "count": 10000 }
@@ -145,7 +153,8 @@
               { "value": "assignedTo", "displayName": "Assigned To" },
               { "value": "state", "displayName": "State" },
               { "value": "priority", "displayName": "Priority" },
-              { "value": "tags", "displayName": "Tags" }
+              { "value": "tags", "displayName": "Tags" },
+              { "value": "scheme", "displayName": "Scheme" }
             ]
           }
         }

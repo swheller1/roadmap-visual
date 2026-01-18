@@ -40,6 +40,7 @@ interface WorkItem {
     assignedTo: string;
     priority: number;
     tags: string;
+    scheme: number;
     selectionId: ISelectionId | null;
 }
 
@@ -192,6 +193,7 @@ export class RoadmapVisual implements IVisual {
         const assignCol = getColumn("assignedTo");
         const prioCol = getColumn("priority");
         const tagsCol = getColumn("tags");
+        const schemeCol = getColumn("scheme");
 
         if (!idCol || !titleCol || !typeCol) {
             return;
@@ -223,6 +225,7 @@ export class RoadmapVisual implements IVisual {
                 assignedTo: this.sanitizeString(String(assignCol?.values[i] || "")),
                 priority: Number(prioCol?.values[i]) || 0,
                 tags: this.sanitizeString(String(tagsCol?.values[i] || "")),
+                scheme: Number(schemeCol?.values[i]) || 0,
                 selectionId
             });
         }

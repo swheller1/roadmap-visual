@@ -1,0 +1,30 @@
+workItemId,title,workItemType,state,startDate,targetDate,parentId,areaPath,iterationPath,assignedTo,tags,scheme
+1001,Platform Modernization,Epic,Active,2026-02-01,2026-05-15,,Platform,Q1-2026,John Smith,infrastructure,1
+1002,Platform Modernization Complete,Milestone,New,,2026-05-15,1001,Platform,Q2-2026,John Smith,infrastructure,1
+1003,Migrate Legacy Database,Feature,Active,2026-02-01,2026-03-20,1001,Platform,Q1-2026,Jane Doe,database,1
+1004,Implement New API Gateway,Feature,New,2026-02-15,2026-04-10,1001,Platform,Q1-2026,Bob Wilson,api,1
+1005,Update Authentication Service,Feature,New,2026-03-01,2026-04-25,1001,Platform,Q2-2026,Alice Chen,security,1
+1006,Deploy Cloud Infrastructure,Feature,New,2026-04-01,2026-05-15,1001,Platform,Q2-2026,John Smith,cloud,1
+2001,Customer Portal v2,Epic,Active,2026-03-01,2026-07-30,,Portal,Q1-2026,Sarah Johnson,customer-facing,2
+2002,Portal v2 Launch,Milestone,New,,2026-07-30,2001,Portal,Q3-2026,Sarah Johnson,customer-facing,2
+2003,Redesign User Dashboard,Feature,Active,2026-03-01,2026-04-15,2001,Portal,Q1-2026,Mike Brown,ui,2
+2004,Implement Self-Service Features,Feature,New,2026-03-20,2026-05-30,2001,Portal,Q2-2026,Lisa Wang,self-service,2
+2005,Add Analytics Dashboard,Feature,New,2026-04-15,2026-06-20,2001,Portal,Q2-2026,Tom Garcia,analytics,2
+2006,Mobile Responsive Overhaul,Feature,New,2026-05-01,2026-07-30,2001,Portal,Q3-2026,Sarah Johnson,mobile,2
+3001,AI Integration Initiative,Epic,New,2026-04-15,2026-09-30,,AI,Q2-2026,David Lee,innovation,3
+3002,AI Phase 1 Complete,Milestone,New,,2026-09-30,3001,AI,Q3-2026,David Lee,innovation,3
+3003,Natural Language Search,Feature,New,2026-04-15,2026-06-15,3001,AI,Q2-2026,Emily Clark,nlp,3
+3004,Predictive Analytics Engine,Feature,New,2026-05-20,2026-07-31,3001,AI,Q2-2026,Chris Martinez,ml,3
+3005,Chatbot Integration,Feature,New,2026-06-15,2026-09-30,3001,AI,Q3-2026,David Lee,chatbot,3
+4001,Security Compliance Program,Epic,Active,2026-05-01,2026-10-31,,Security,Q2-2026,Rachel Kim,compliance,4
+4002,SOC2 Certification,Milestone,New,,2026-10-31,4001,Security,Q4-2026,Rachel Kim,compliance,4
+4003,Vulnerability Assessment,Feature,Active,2026-05-01,2026-06-30,4001,Security,Q2-2026,James Wilson,security-audit,4
+4004,Implement Zero Trust Architecture,Feature,New,2026-06-01,2026-08-15,4001,Security,Q3-2026,Nina Patel,zero-trust,4
+4005,Security Training Platform,Feature,New,2026-07-01,2026-09-15,4001,Security,Q3-2026,Kevin Zhang,training,4
+4006,Compliance Documentation,Feature,New,2026-08-01,2026-10-31,4001,Security,Q4-2026,Rachel Kim,documentation,4
+5001,Data Pipeline Overhaul,Epic,New,2026-08-01,2027-01-15,,Data,Q3-2026,Marcus Thompson,data-engineering,1
+5002,Pipeline v2 Ready,Milestone,New,,2027-01-15,5001,Data,Q1-2027,Marcus Thompson,data-engineering,1
+5003,Stream Processing Framework,Feature,New,2026-08-01,2026-09-30,5001,Data,Q3-2026,Amy Rodriguez,streaming,1
+5004,Data Lake Migration,Feature,New,2026-09-01,2026-11-15,5001,Data,Q4-2026,Derek Moore,data-lake,1
+5005,Real-time Analytics Pipeline,Feature,New,2026-10-01,2026-12-20,5001,Data,Q4-2026,Sophie Turner,analytics,1
+5006,Data Governance Implementation,Feature,New,2026-11-01,2027-01-15,5001,Data,Q1-2027,Marcus Thompson,governance,1
