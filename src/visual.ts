@@ -446,8 +446,10 @@ export class RoadmapVisual implements IVisual {
         const rows = this.buildRows();
         const totalHeight = rows.length > 0 ? rows[rows.length - 1].y + rows[rows.length - 1].height : 0;
 
-        // Header
-        const header = this.container.append("div").classed("header", true);
+        // Header with ARIA landmark
+        const header = this.container.append("div")
+            .classed("header", true)
+            .attr("role", "banner");
 
         // Add logo if URL is provided and show is enabled
         if (this.settings.showLogo && this.settings.logoUrl) {
@@ -474,21 +476,34 @@ export class RoadmapVisual implements IVisual {
             .text("Export PDF")
             .on("click", () => this.exportToPdf());
 
-        // Main container - add pdf-mode class for export optimization
-        const main = this.container.append("div").classed("main", true).classed("pdf-mode", this.settings.pdfMode);
+        // Main container with ARIA landmark - add pdf-mode class for export optimization
+        const main = this.container.append("div")
+            .classed("main", true)
+            .classed("pdf-mode", this.settings.pdfMode)
+            .attr("role", "main")
+            .attr("aria-label", "Roadmap timeline visualization");
 
-        // Left panel
-        const left = main.append("div").classed("left-panel", true).style("width", `${leftPanelWidth}px`);
-        left.append("div").classed("left-header", true).text("WORK ITEMS");
-        const leftBody = left.append("div").classed("left-body", true);
+        // Left panel with ARIA navigation landmark
+        const left = main.append("div")
+            .classed("left-panel", true)
+            .style("width", `${leftPanelWidth}px`)
+            .attr("role", "navigation")
+            .attr("aria-label", "Work items list");
+        left.append("div").classed("left-header", true).attr("id", "work-items-heading").text("WORK ITEMS");
+        const leftBody = left.append("div")
+            .classed("left-body", true)
+            .attr("aria-labelledby", "work-items-heading");
 
         // In PDF mode, show all content without scroll
         if (this.settings.pdfMode) {
             leftBody.style("overflow", "visible").style("height", "auto");
         }
 
-        // Timeline panel
-        const timeline = main.append("div").classed("timeline-panel", true);
+        // Timeline panel with ARIA region
+        const timeline = main.append("div")
+            .classed("timeline-panel", true)
+            .attr("role", "region")
+            .attr("aria-label", "Timeline with work item bars and milestones");
         const timelineHeaderWrapper = timeline.append("div").classed("timeline-header-wrapper", true);
         const timelineHeader = timelineHeaderWrapper.append("div").classed("timeline-header", true).style("width", `${timelineWidth}px`);
         const timelineBody = timeline.append("div").classed("timeline-body", true);
@@ -738,21 +753,43 @@ export class RoadmapVisual implements IVisual {
             .style("padding-left", `${LAYOUT.ROW_PADDING + indent}px`);
 
         if (row.type === "GroupHeader") {
-            rowEl.append("span").classed("row-chevron", true).text(row.collapsed ? "▶" : "▼");
+            rowEl
+                .attr("role", "button")
+                .attr("aria-expanded", row.collapsed ? "false" : "true")
+                .attr("tabindex", "0");
+            rowEl.append("span").classed("row-chevron", true).attr("aria-hidden", "true").text(row.collapsed ? "▶" : "▼");
             rowEl.append("span").classed("row-title", true).text(row.name || "");
-            rowEl.append("span").classed("row-count", true).text(String(row.childCount || 0));
+            rowEl.append("span").classed("row-count", true).attr("aria-label", `${row.childCount || 0} items`).text(String(row.childCount || 0));
             rowEl.on("click", () => this.toggleCollapse(`grp-${row.name}`));
+            rowEl.on("keydown", (event: KeyboardEvent) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    this.toggleCollapse(`grp-${row.name}`);
+                }
+            });
         } else if (row.data) {
-            rowEl.append("div").classed("row-indicator", true).style("background", this.getColor(row.type));
+            rowEl.append("div").classed("row-indicator", true).attr("aria-hidden", "true").style("background", this.getColor(row.type));
             if (row.isParent) {
-                rowEl.append("span").classed("row-chevron", true).text(row.collapsed ? "▶" : "▼");
+                rowEl
+                    .attr("role", "button")
+                    .attr("aria-expanded", row.collapsed ? "false" : "true")
+                    .attr("tabindex", "0");
+                rowEl.append("span").classed("row-chevron", true).attr("aria-hidden", "true").text(row.collapsed ? "▶" : "▼");
             }
             rowEl.append("span").classed("row-id", true).text(String(row.data.workItemId));
             rowEl.append("span").classed("row-title", true).text(row.data.title);
             if (row.childCount !== undefined && row.childCount > 0) {
-                rowEl.append("span").classed("row-count", true).text(String(row.childCount));
+                rowEl.append("span").classed("row-count", true).attr("aria-label", `${row.childCount} child items`).text(String(row.childCount));
             }
-            if (row.isParent) rowEl.on("click", () => this.toggleCollapse(row.data!.id));
+            if (row.isParent) {
+                rowEl.on("click", () => this.toggleCollapse(row.data!.id));
+                rowEl.on("keydown", (event: KeyboardEvent) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        this.toggleCollapse(row.data!.id);
+                    }
+                });
+            }
             rowEl.on("contextmenu", (event: MouseEvent) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -797,9 +834,16 @@ export class RoadmapVisual implements IVisual {
                 milestoneContainer.style("left", `${x - size / 2}px`);
             }
 
+            // Format date for accessibility
+            const targetDateStr = DateService.formatAU(item.targetDate, { day: "numeric", month: "long", year: "numeric" });
+            const ariaLabel = `Milestone ${item.workItemId}: ${item.title}, Target date ${targetDateStr}`;
+
             const el = milestoneContainer.append("div")
                 .classed("milestone", true)
                 .attr("data-id", item.id)
+                .attr("role", "img")
+                .attr("aria-label", ariaLabel)
+                .attr("tabindex", "0")
                 .style("width", `${size}px`)
                 .style("height", `${size}px`)
                 .style("background", color)
@@ -826,9 +870,18 @@ export class RoadmapVisual implements IVisual {
             const endX = DateService.daysBetween(this.viewStart, item.targetDate) * dayWidth;
             const width = Math.max(endX - startX + dayWidth, LAYOUT.MIN_BAR_WIDTH);
             const barHeight = this.getBarHeight(row.type);
+
+            // Format dates for accessibility
+            const startDateStr = DateService.formatAU(item.startDate, { day: "numeric", month: "long", year: "numeric" });
+            const endDateStr = DateService.formatAU(item.targetDate, { day: "numeric", month: "long", year: "numeric" });
+            const barAriaLabel = `${row.type} ${item.workItemId}: ${item.title}, ${startDateStr} to ${endDateStr}`;
+
             const bar = rowEl.append("div")
                 .classed("bar", true)
                 .attr("data-id", item.id)
+                .attr("role", "img")
+                .attr("aria-label", barAriaLabel)
+                .attr("tabindex", "0")
                 .style("left", `${startX}px`)
                 .style("width", `${width}px`)
                 .style("height", `${barHeight}px`)
@@ -1178,10 +1231,18 @@ export class RoadmapVisual implements IVisual {
 
     private sanitizeUrl(url: string): string {
         if (!url) return "";
-        // Only allow http, https, and data URLs for security
-        const trimmed = url.trim();
-        if (trimmed.startsWith("https://") || trimmed.startsWith("http://") || trimmed.startsWith("data:image/")) {
-            return trimmed;
+        // Only allow HTTPS and data:image URLs for security (no http:// or file://)
+        // This prevents mixed content warnings and protocol-based attacks
+        const trimmed = url.trim().toLowerCase();
+        const originalTrimmed = url.trim();
+        if (trimmed.startsWith("https://")) {
+            return originalTrimmed;
+        }
+        if (trimmed.startsWith("data:image/")) {
+            // Validate data URL format more strictly
+            if (/^data:image\/(png|jpeg|jpg|gif|svg\+xml|webp);base64,/i.test(originalTrimmed)) {
+                return originalTrimmed;
+            }
         }
         return "";
     }
@@ -1292,7 +1353,16 @@ export class RoadmapVisual implements IVisual {
             .on("mousemove.dragpan", null)
             .on("mouseup.dragpan", null);
 
+        // Remove all event listeners from container and children
+        this.container.on("contextmenu", null);
+
+        // Remove all child elements first
         this.container.selectAll("*").remove();
+
+        // Remove the main container element itself for full cleanup
+        this.container.remove();
+
+        // Clear all data references for garbage collection
         this.workItems = [];
         this.collapsed.clear();
         this.rowPositions.clear();
