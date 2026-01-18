@@ -123,8 +123,50 @@
     }
   ],
   "objects": {
+    "display": {
+      "displayName": "Display",
+      "description": "Control how the roadmap is displayed",
+      "properties": {
+        "viewScale": {
+          "displayName": "View Scale",
+          "description": "Timeline granularity",
+          "type": {
+            "enumeration": [
+              { "value": "daily", "displayName": "Day" },
+              { "value": "weekly", "displayName": "Week" },
+              { "value": "monthly", "displayName": "Month" },
+              { "value": "annual", "displayName": "Year" },
+              { "value": "multiYear", "displayName": "Multi Year" }
+            ]
+          }
+        },
+        "rowDensity": {
+          "displayName": "Row Density",
+          "description": "Row height for fitting more data",
+          "type": {
+            "enumeration": [
+              { "value": "compact", "displayName": "Compact" },
+              { "value": "normal", "displayName": "Normal" },
+              { "value": "comfortable", "displayName": "Comfortable" }
+            ]
+          }
+        },
+        "zoomLevel": {
+          "displayName": "Zoom",
+          "description": "Timeline zoom level",
+          "type": {
+            "enumeration": [
+              { "value": "0.5", "displayName": "50%" },
+              { "value": "1", "displayName": "100%" },
+              { "value": "2", "displayName": "200%" },
+              { "value": "4", "displayName": "400%" }
+            ]
+          }
+        }
+      }
+    },
     "general": {
-      "displayName": "General",
+      "displayName": "Title & Subtitle",
       "properties": {
         "title": {
           "displayName": "Title",
@@ -133,26 +175,36 @@
         "subtitle": {
           "displayName": "Subtitle",
           "type": { "text": true }
+        }
+      }
+    },
+    "workItemColors": {
+      "displayName": "Work Item Colors",
+      "description": "Colors for each work item type",
+      "properties": {
+        "epicColor": {
+          "displayName": "Epic",
+          "description": "Color for Epic work items",
+          "type": { "fill": { "solid": { "color": true } } }
         },
-        "rowDensity": {
-          "displayName": "Row Density",
-          "description": "Control row height to fit more or less data vertically",
-          "type": {
-            "enumeration": [
-              { "value": "compact", "displayName": "Compact" },
-              { "value": "normal", "displayName": "Normal" },
-              { "value": "comfortable", "displayName": "Comfortable" }
-            ]
-          }
+        "featureColor": {
+          "displayName": "Feature",
+          "description": "Color for Feature work items",
+          "type": { "fill": { "solid": { "color": true } } }
+        },
+        "milestoneColor": {
+          "displayName": "Milestone",
+          "description": "Color for Milestone work items",
+          "type": { "fill": { "solid": { "color": true } } }
         }
       }
     },
     "organization": {
       "displayName": "Organization",
-      "description": "Configure how work items are grouped and displayed",
+      "description": "Configure how work items are grouped",
       "properties": {
         "groupBy": {
-          "displayName": "Group Rows By",
+          "displayName": "Group By",
           "description": "Choose how to group the top-level rows",
           "type": {
             "enumeration": [
@@ -167,12 +219,12 @@
           }
         },
         "showHierarchy": {
-          "displayName": "Show Hierarchy",
+          "displayName": "Collapsible Groups",
           "description": "Display items in a collapsible tree structure",
           "type": { "bool": true }
         },
         "defaultExpanded": {
-          "displayName": "Default Expanded",
+          "displayName": "Expand by Default",
           "description": "Expand all groups by default",
           "type": { "bool": true }
         }
@@ -180,7 +232,7 @@
     },
     "levels": {
       "displayName": "Visible Levels",
-      "description": "Choose which work item types to display",
+      "description": "Choose which work item types to show",
       "properties": {
         "showEpics": {
           "displayName": "Show Epics",
@@ -201,68 +253,23 @@
       "description": "Configure dependency line display",
       "properties": {
         "show": {
-          "displayName": "Show Dependency Lines",
-          "description": "Draw lines between parent and child items",
+          "displayName": "Show Lines",
+          "description": "Draw dependency lines between items",
           "type": { "bool": true }
         },
         "showParentChild": {
-          "displayName": "Show Parent-Child Links",
+          "displayName": "Parent-Child Links",
           "description": "Draw lines from Epics to their Features/Milestones",
           "type": { "bool": true }
         },
         "showPredecessors": {
-          "displayName": "Show Predecessor Links",
+          "displayName": "Predecessor Links",
           "description": "Draw lines based on Predecessor ID field",
           "type": { "bool": true }
         },
         "lineColor": {
           "displayName": "Line Color",
           "type": { "fill": { "solid": { "color": true } } }
-        }
-      }
-    },
-    "colors": {
-      "displayName": "Colors",
-      "properties": {
-        "epicColor": {
-          "displayName": "Epic Color",
-          "type": { "fill": { "solid": { "color": true } } }
-        },
-        "milestoneColor": {
-          "displayName": "Milestone Color",
-          "type": { "fill": { "solid": { "color": true } } }
-        },
-        "featureColor": {
-          "displayName": "Feature Color",
-          "type": { "fill": { "solid": { "color": true } } }
-        }
-      }
-    },
-    "timeScale": {
-      "displayName": "Time Scale",
-      "properties": {
-        "scale": {
-          "displayName": "View Scale",
-          "type": {
-            "enumeration": [
-              { "value": "daily", "displayName": "Day" },
-              { "value": "weekly", "displayName": "Week" },
-              { "value": "monthly", "displayName": "Month" },
-              { "value": "annual", "displayName": "Year" },
-              { "value": "multiYear", "displayName": "Multi Year" }
-            ]
-          }
-        },
-        "zoomLevel": {
-          "displayName": "Zoom Level",
-          "type": {
-            "enumeration": [
-              { "value": "0.5", "displayName": "50%" },
-              { "value": "1", "displayName": "100%" },
-              { "value": "2", "displayName": "200%" },
-              { "value": "4", "displayName": "400%" }
-            ]
-          }
         }
       }
     },

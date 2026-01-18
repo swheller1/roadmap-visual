@@ -280,25 +280,46 @@ export class RoadmapVisual implements IVisual {
         const objects = dataView.metadata?.objects;
         if (!objects) return;
 
-        if (objects.general) {
-            this.settings.title = this.sanitizeString(String(objects.general.title || this.settings.title));
-            this.settings.subtitle = this.sanitizeString(String(objects.general.subtitle || this.settings.subtitle));
-            const density = String(objects.general.rowDensity || 'normal');
+        // Display settings (View Scale, Row Density, Zoom)
+        if (objects.display) {
+            const scale = String(objects.display.viewScale || 'monthly');
+            if (['daily', 'weekly', 'monthly', 'annual', 'multiYear'].includes(scale)) {
+                this.settings.timeScale = scale as 'daily' | 'weekly' | 'monthly' | 'annual' | 'multiYear';
+            }
+            const density = String(objects.display.rowDensity || 'normal');
             if (['compact', 'normal', 'comfortable'].includes(density)) {
                 this.settings.rowDensity = density as 'compact' | 'normal' | 'comfortable';
             }
+            const zoom = parseFloat(String(objects.display.zoomLevel || '1'));
+            if ([0.5, 1, 2, 4].includes(zoom)) {
+                this.settings.zoomLevel = zoom;
+            }
         }
+        // Title & Subtitle
+        if (objects.general) {
+            this.settings.title = this.sanitizeString(String(objects.general.title || this.settings.title));
+            this.settings.subtitle = this.sanitizeString(String(objects.general.subtitle || this.settings.subtitle));
+        }
+        // Work Item Colors
+        if (objects.workItemColors) {
+            const getColor = (obj: any): string | undefined => obj?.solid?.color;
+            this.settings.epicColor = getColor(objects.workItemColors.epicColor) || this.settings.epicColor;
+            this.settings.milestoneColor = getColor(objects.workItemColors.milestoneColor) || this.settings.milestoneColor;
+            this.settings.featureColor = getColor(objects.workItemColors.featureColor) || this.settings.featureColor;
+        }
+        // Organization settings
         if (objects.organization) {
             this.settings.groupBy = this.sanitizeString(String(objects.organization.groupBy || "epic"));
             this.settings.showHierarchy = objects.organization.showHierarchy !== false;
             this.settings.defaultExpanded = objects.organization.defaultExpanded !== false;
         }
-        if (objects.colors) {
-            const getColor = (obj: any): string | undefined => obj?.solid?.color;
-            this.settings.epicColor = getColor(objects.colors.epicColor) || this.settings.epicColor;
-            this.settings.milestoneColor = getColor(objects.colors.milestoneColor) || this.settings.milestoneColor;
-            this.settings.featureColor = getColor(objects.colors.featureColor) || this.settings.featureColor;
+        // Visible Levels
+        if (objects.levels) {
+            this.settings.showEpics = objects.levels.showEpics !== false;
+            this.settings.showFeatures = objects.levels.showFeatures !== false;
+            this.settings.showMilestones = objects.levels.showMilestones !== false;
         }
+        // Dependencies
         if (objects.dependencies) {
             this.settings.showDependencies = Boolean(objects.dependencies.show);
             this.settings.showParentChild = objects.dependencies.showParentChild !== false;
@@ -306,21 +327,7 @@ export class RoadmapVisual implements IVisual {
             const lineColor = (objects.dependencies.lineColor as any)?.solid?.color;
             if (lineColor) this.settings.dependencyLineColor = lineColor;
         }
-        if (objects.levels) {
-            this.settings.showEpics = objects.levels.showEpics !== false;
-            this.settings.showFeatures = objects.levels.showFeatures !== false;
-            this.settings.showMilestones = objects.levels.showMilestones !== false;
-        }
-        if (objects.timeScale) {
-            const scale = String(objects.timeScale.scale || 'monthly');
-            if (['daily', 'weekly', 'monthly', 'annual', 'multiYear'].includes(scale)) {
-                this.settings.timeScale = scale as 'daily' | 'weekly' | 'monthly' | 'annual' | 'multiYear';
-            }
-            const zoom = parseFloat(String(objects.timeScale.zoomLevel || '1'));
-            if ([0.5, 1, 2, 4].includes(zoom)) {
-                this.settings.zoomLevel = zoom;
-            }
-        }
+        // Export settings
         if (objects.export) {
             this.settings.pdfMode = Boolean(objects.export.pdfMode);
         }
