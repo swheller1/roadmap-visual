@@ -1,112 +1,217 @@
-# Roadmap Visual User Manual
+# ROADMAP VISUAL for Power BI
 
-**Version 1.0.0** | January 2026
+## USER MANUAL
+
+| Document Version | Date | Audience |
+|------------------|------|----------|
+| 2.0 | January 2026 | Australian Public Sector Power BI Creators |
+
+**AI Disclosure:** Artificial Intelligence was used during the creation of this documentation and the associated codebase.
+
+### Licence
+
+This work is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
+
+https://creativecommons.org/licenses/by-nc-sa/4.0/
 
 ---
 
 ## Table of Contents
 
-1. [Introduction](#introduction)
-2. [Getting Started](#getting-started)
-3. [Data Configuration](#data-configuration)
-4. [Visual Features](#visual-features)
-5. [Format Settings](#format-settings)
-6. [Interactivity](#interactivity)
-7. [Azure DevOps Integration](#azure-devops-integration)
-8. [Tips and Best Practices](#tips-and-best-practices)
-9. [Troubleshooting](#troubleshooting)
+1. [Executive Summary](#1-executive-summary)
+2. [Architecture Overview](#2-architecture-overview)
+3. [Security Posture](#3-security-posture)
+4. [Compliance Summary](#4-compliance-summary)
+5. [User Guide](#5-user-guide)
+6. [Azure DevOps OData Integration](#6-azure-devops-odata-integration)
+7. [Support and Maintenance](#7-support-and-maintenance)
+8. [Security Attestation](#8-security-attestation)
 
 ---
 
-## Introduction
+## 1. Executive Summary
 
-The Roadmap Visual is a Power BI custom visual designed for displaying project roadmaps with Epics, Features, and Milestones. It provides a Gantt-style timeline view with hierarchical work item organization, swimlane grouping, and Azure DevOps Analytics integration.
+The Roadmap Visual is a custom Power BI visual designed to display project timelines, milestones, and work items in an interactive roadmap format. This visual is built specifically for use within the Power BI ecosystem and adheres to Microsoft certification requirements.
 
-### Key Features
+### Security Summary
 
-- **Timeline Visualization**: Gantt-style bars showing work item durations
-- **Hierarchical Display**: Parent-child relationships with collapsible Epic sections
-- **Swimlane Grouping**: Organize by Area Path, Iteration, Assigned To, State, Priority, or Tags
-- **Discrete Zoom Levels**: Day, week, month, and year views for optimal navigation
-- **Today Line**: Visual indicator of current date
-- **Milestone Markers**: Diamond indicators for key milestone dates
-- **Customizable Colors**: Configure colors for Epics, Features, and Milestones
-- **Selection Support**: Click to select items; integrates with other Power BI visuals
-- **Context Menu**: Right-click for Power BI context menu options
+- No data transmission to external servers
+- No data storage (localStorage, cookies, IndexedDB)
+- Executes entirely within Power BI sandbox
+- Microsoft certification compliant
 
 ---
 
-## Getting Started
+## 2. Architecture Overview
 
-### Installation
+This section provides technical details about the visual architecture, data flow, and security boundaries. Understanding this architecture is essential for IT security assessments and governance reviews.
 
-1. Download or build the `.pbiviz` file
-2. In Power BI Desktop, click the ellipsis (...) in the Visualizations pane
-3. Select **Import a visual from a file**
-4. Navigate to and select the `.pbiviz` file
-5. The Roadmap Visual icon appears in your Visualizations pane
+### 2.1 System Architecture
 
-### Quick Setup
+The Roadmap Visual operates as a self-contained component within the Power BI rendering engine. It follows a strict input-process-output model with no external dependencies or network calls.
 
-1. Add the Roadmap Visual to your report canvas
-2. Connect to your data source (Azure DevOps OData or other)
-3. Drag fields to the required data roles:
-   - **Work Item ID** (required)
-   - **Title** (required)
-   - **Work Item Type** (required)
-4. Add recommended fields for full functionality:
-   - **Start Date** and **Target Date** for timeline bars
-   - **Parent ID** for hierarchy
-   - **Area Path** for swimlane grouping
+#### Architecture Diagram
 
----
+```
+┌─────────────────────────────────────────────┐
+│           POWER BI SERVICE                  │
+│  ┌─────────────────────────────────────┐   │
+│  │       VISUAL SANDBOX (Isolated)     │   │
+│  │  ┌─────────────────────────────┐   │   │
+│  │  │    ROADMAP VISUAL           │   │   │
+│  │  │  ┌───────┐    ┌──────────┐  │   │   │
+│  │  │  │ D3.js │ →  │ SVG/DOM  │  │   │   │
+│  │  │  └───────┘    └──────────┘  │   │   │
+│  │  └─────────────────────────────┘   │   │
+│  │         ↑ Data via DataView        │   │
+│  └─────────────────────────────────────┘   │
+└─────────────────────────────────────────────┘
+```
 
-## Data Configuration
+### 2.2 Component Stack
 
-### Required Fields
+The visual is built using the following technology stack, all of which are approved components within the Power BI Visuals SDK:
 
-| Data Role | Description | Notes |
-|-----------|-------------|-------|
-| **Work Item ID** | Unique identifier | Numeric ID for each item |
-| **Title** | Display name | Shown in left panel and bar labels |
-| **Work Item Type** | Epic, Feature, or Milestone | Controls display style |
+| Component | Version | Purpose |
+|-----------|---------|---------|
+| Power BI Visuals API | 5.8.0 | Core visual framework |
+| TypeScript | 5.x | Type-safe development |
+| D3.js | 7.8.5 | Data visualisation library |
 
-### Optional Fields
+### 2.3 Data Flow
 
-| Data Role | Description | Use Case |
-|-----------|-------------|----------|
-| **Start Date** | Work start date | Required for timeline bars |
-| **Target Date** | Work end/due date | Required for timeline bars and milestones |
-| **Parent ID** | Parent work item ID | Links Features to Epics for hierarchy |
-| **State** | Work item state | Swimlane grouping option |
-| **Area Path** | Team/area classification | Swimlane grouping option |
-| **Iteration Path** | Sprint/iteration | Swimlane grouping option |
-| **Assigned To** | Owner/assignee | Swimlane grouping option |
-| **Priority** | Priority level (1-4) | Swimlane grouping option |
-| **Tags** | Comma-separated tags | Swimlane grouping option |
+Data flows through the visual in a strictly controlled, read-only manner:
 
-### Data Requirements
+1. Power BI loads data from configured data sources (e.g., Azure DevOps, Excel, SQL)
+2. Data is passed to the visual via the DataView API (read-only)
+3. Visual processes data in-memory to calculate positions and render timeline
+4. D3.js renders SVG elements to the sandboxed DOM
+5. User interactions (zoom, pan, expand) are handled locally within the sandbox
 
-- **Epics**: Display as larger timeline bars; act as parent containers
-- **Features**: Display as medium bars; can be children of Epics
-- **Milestones**: Display as diamond markers; require only Target Date
+**Key Point:** No data leaves the Power BI boundary. The visual cannot and does not make any network requests, store data persistently, or communicate with external services.
 
 ---
 
-## Visual Features
+## 3. Security Posture
 
-### Timeline View
+This section details the security controls implemented in the Roadmap Visual and provides evidence of compliance with Australian Government security requirements.
 
-The visual displays work items on a horizontal timeline:
+### 3.1 Data Transmission
 
-- **Epics**: Large colored bars spanning start to target date
-- **Features**: Medium bars, grouped under parent Epics
-- **Milestones**: Diamond markers at target date
-- **Today Line**: Red vertical line indicating current date
+The visual does not transmit data to any external servers or services. This has been verified through code audit:
 
-### Discrete Zoom Levels
+| Network API | Status |
+|-------------|--------|
+| fetch() / XMLHttpRequest | Not Used |
+| WebSocket connections | Not Used |
+| Beacon API | Not Used |
+| External script loading | Not Used |
+| Analytics/telemetry | Not Used |
 
-The timeline uses discrete zoom levels for optimal navigation:
+### 3.2 Data Storage
+
+The visual does not store any data persistently. All data exists only in memory during the active session:
+
+| Storage API | Status |
+|-------------|--------|
+| localStorage | Not Used |
+| sessionStorage | Not Used |
+| IndexedDB | Not Used |
+| Cookies | Not Used |
+| File System Access | Not Used |
+
+### 3.3 DOM Security
+
+The visual follows secure DOM manipulation practices to prevent XSS and injection attacks:
+
+| Security Control | Implementation |
+|------------------|----------------|
+| innerHTML usage | Prohibited - uses D3 .text() and .append() |
+| Input sanitisation | sanitizeString() escapes all user data |
+| eval() / Function() | Not used |
+| Dynamic script injection | Not permitted |
+
+---
+
+## 4. Compliance Summary
+
+The following table provides a comprehensive compliance assessment against Microsoft Power BI certification requirements and Australian Government security standards.
+
+### 4.1 Microsoft Certification Compliance
+
+| Requirement | Status | Implementation |
+|-------------|--------|----------------|
+| Power BI Visuals SDK | ✓ Compliant | powerbi-visuals-api v5.8.0 |
+| TypeScript source code | ✓ Compliant | src/visual.ts |
+| D3.js for rendering | ✓ Compliant | d3 v7.8.5 |
+| Rendering Events API | ✓ Compliant | renderingStarted/Finished/Failed |
+| Context Menu support | ✓ Compliant | selectionManager.showContextMenu() |
+| Selection Manager | ✓ Compliant | Click and multi-select support |
+| No external network calls | ✓ Compliant | No fetch/XHR/WebSocket |
+| Safe DOM manipulation | ✓ Compliant | D3 .text() and .append() only |
+| Input sanitisation | ✓ Compliant | sanitizeString() function |
+| destroy() method | ✓ Compliant | Cleanup implemented |
+| .gitignore file | ✓ Compliant | Included in package |
+| tslint.json / eslint config | ✓ Compliant | Code quality rules applied |
+
+### 4.2 Australian Government Security Compliance
+
+| ISM Control Area | Status | Evidence |
+|------------------|--------|----------|
+| Data sovereignty - no offshore transmission | ✓ Compliant | No network calls |
+| Data at rest protection | ✓ Compliant | No persistent storage |
+| Data in transit protection | N/A | No data transmitted |
+| Input validation | ✓ Compliant | All inputs sanitised |
+| Code integrity | ✓ Compliant | Signed package, no eval() |
+| Third-party component management | ✓ Compliant | Only approved SDK components |
+| Logging and audit | ✓ Compliant | Power BI handles audit logging |
+
+---
+
+## 5. User Guide
+
+This section provides instructions for using the Roadmap Visual within your Power BI reports.
+
+### 5.1 Data Requirements
+
+The visual requires specific data fields to render correctly. Map your data source columns to these fields in the Power BI field well:
+
+#### Required Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| WorkItemId | Number | Unique identifier for each item |
+| Title | Text | Display name of the work item |
+| StartDate | Date | When the item begins |
+| TargetDate | Date | When the item is due |
+
+#### Optional Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| WorkItemType | Text | Epic, Feature, Milestone, etc. |
+| State | Text | Current status (New, Active, Closed) |
+| ParentWorkItemId | Number | Links child items to parent Epics |
+| AreaPath | Text | For swimlane grouping |
+| IterationPath | Text | Sprint/iteration for grouping |
+| AssignedTo | Text | Person responsible for the item |
+| Priority | Number | 1-4 priority ranking |
+| Tags | Text | Comma-separated tags for filtering |
+
+### 5.2 Navigation Controls
+
+| Action | How To |
+|--------|--------|
+| Pan timeline | Click and drag on the timeline area |
+| Zoom in/out | Ctrl + scroll wheel, or use zoom buttons |
+| Expand/collapse Epic | Click on an Epic row to show/hide child items |
+| Expand/collapse swimlane | Click on a swimlane header |
+| Edit title/subtitle | Click on the title or subtitle text to edit inline |
+| Print/Export PDF | Use browser print dialog (Ctrl+P) |
+
+### 5.3 Zoom Levels
+
+The visual uses discrete zoom levels for optimal navigation:
 
 | Level | View | Day Width | Best For |
 |-------|------|-----------|----------|
@@ -115,111 +220,45 @@ The timeline uses discrete zoom levels for optimal navigation:
 | 2x | Week view | 28px | Sprint planning |
 | 3x+ | Day view | 40px | Detailed scheduling |
 
-### Hierarchical Organization
+### 5.4 Settings Configuration
 
-When **Swimlanes** are disabled:
-- Epics display at the top level
-- Features and Milestones group under their parent Epic
-- Click the chevron (▶/▼) to collapse/expand Epic sections
+Access settings via the Settings button (gear icon) in the visual toolbar. Available options include:
 
-### Swimlane Grouping
-
-When **Swimlanes** are enabled:
-- Work items group by the selected field
-- Each swimlane header shows the group name and item count
-- Click swimlane headers to collapse/expand
+- **Swimlane grouping:** Area Path, Iteration Path, Assigned To, State, Priority, Tags
+- **Colour customisation:** Epic, Feature, and Milestone colours
+- **Bar display:** Choose which fields appear on timeline bars
+- **Row and bar heights:** Adjust sizing for dense or spacious layouts
+- **Dependencies:** Toggle dependency lines on/off
 
 ---
 
-## Format Settings
+## 6. Azure DevOps OData Integration
 
-Access format settings by selecting the visual and opening the Format pane.
+This section provides detailed guidance for connecting the Roadmap Visual to Azure DevOps Analytics via OData.
 
-### General
+### 6.1 OData Field Reference
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| **Title** | Main heading displayed at top | "Roadmap" |
-| **Subtitle** | Secondary text below title | "Work Items" |
+| Visual Field | OData Entity | OData Field Name | Notes |
+|--------------|--------------|------------------|-------|
+| Work Item ID | WorkItems | `WorkItemId` | Primary key |
+| Title | WorkItems | `Title` | Display name |
+| Work Item Type | WorkItems | `WorkItemType` | Filter: Epic, Feature, Milestone |
+| State | WorkItems | `State` | New, Active, Resolved, Closed |
+| Start Date | WorkItems | `StartDate` | May be null |
+| Target Date | WorkItems | `TargetDate` | May be null |
+| Parent ID | WorkItems | `ParentWorkItemId` | Links hierarchy |
+| Area Path | Area | `AreaPath` | Use $expand=Area |
+| Iteration Path | Iteration | `IterationPath` | Use $expand=Iteration |
+| Assigned To | User | `UserName` | Use $expand=AssignedTo |
+| Priority | WorkItems | `Priority` | Integer 1-4 |
+| Tags | WorkItems | `Tags` | Comma-separated string |
 
-### Swimlanes
+### 6.2 Sample OData Query URLs
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| **Show Swimlanes** | Enable swimlane grouping | Off |
-| **Group By** | Field to group by | None |
-
-**Group By Options:**
-- None (hierarchical Epic-based layout)
-- Area Path
-- Iteration Path
-- Assigned To
-- State
-- Priority
-- Tags
-
-### Colors
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| **Epic Color** | Color for Epic bars | Indigo (#4F46E5) |
-| **Milestone Color** | Color for Milestone diamonds | Red (#DC2626) |
-| **Feature Color** | Color for Feature bars | Cyan (#0891B2) |
-
-### Dependencies
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| **Show Dependencies** | Display dependency lines | On |
-
----
-
-## Interactivity
-
-### Selection
-
-- **Single Click**: Select a work item (highlights across visuals)
-- **Ctrl+Click**: Multi-select work items
-- **Click Background**: Clear selection
-
-### Context Menu
-
-- **Right-Click** any work item or the background for Power BI context menu
-- Options include: Show data point, Remove, Spotlight, etc.
-
-### Collapse/Expand
-
-- **Click Epic row**: Collapse or expand child items
-- **Click Swimlane header**: Collapse or expand swimlane contents
-
-### Scrolling
-
-- **Vertical Scroll**: Navigate through work items (left and timeline panels sync)
-- **Horizontal Scroll**: Navigate through timeline (in timeline panel)
-
----
-
-## Azure DevOps Integration
-
-### Connecting to Azure DevOps Analytics
-
-1. In Power BI Desktop, click **Get Data** > **OData Feed**
-
-2. Enter the OData URL for your organization:
-   ```
-   https://analytics.dev.azure.com/{org}/{project}/_odata/v4.0-preview/WorkItems
-   ```
-
-3. Add query parameters for filtering and field selection (see examples below)
-
-4. Authenticate with **Organizational Account** using Azure DevOps credentials
-
-### OData Query Examples
-
-**Minimal Query (Required Fields):**
+**Basic Query (Required Fields Only):**
 ```
 https://analytics.dev.azure.com/{org}/{project}/_odata/v4.0-preview/WorkItems?
-  $select=WorkItemId,Title,WorkItemType,State
+  $select=WorkItemId,Title,WorkItemType,State,StartDate,TargetDate
   &$filter=WorkItemType in ('Epic','Feature','Milestone')
 ```
 
@@ -231,7 +270,7 @@ https://analytics.dev.azure.com/{org}/{project}/_odata/v4.0-preview/WorkItems?
   &$expand=Area($select=AreaPath),Iteration($select=IterationPath),AssignedTo($select=UserName)
 ```
 
-**Filtered by Date Range:**
+**With Date Filtering:**
 ```
 https://analytics.dev.azure.com/{org}/{project}/_odata/v4.0-preview/WorkItems?
   $select=WorkItemId,Title,WorkItemType,State,StartDate,TargetDate,ParentWorkItemId
@@ -241,114 +280,63 @@ https://analytics.dev.azure.com/{org}/{project}/_odata/v4.0-preview/WorkItems?
   &$expand=Area($select=AreaPath)
 ```
 
-### Field Mapping Reference
+### 6.3 Connection Steps
 
-| Visual Data Role | OData Field | Expand Required |
-|------------------|-------------|-----------------|
-| Work Item ID | `WorkItemId` | No |
-| Title | `Title` | No |
-| Work Item Type | `WorkItemType` | No |
-| State | `State` | No |
-| Start Date | `StartDate` | No |
-| Target Date | `TargetDate` | No |
-| Parent ID | `ParentWorkItemId` | No |
-| Area Path | `AreaPath` | Yes: `$expand=Area($select=AreaPath)` |
-| Iteration Path | `IterationPath` | Yes: `$expand=Iteration($select=IterationPath)` |
-| Assigned To | `UserName` | Yes: `$expand=AssignedTo($select=UserName)` |
-| Priority | `Priority` | No |
-| Tags | `Tags` | No |
-
-### Power Query Transformations
-
-After connecting, you may need to transform data in Power Query:
-
-1. **Expand nested columns**: Area, Iteration, AssignedTo
-2. **Rename columns**: Match visual data role names
-3. **Set data types**: Ensure dates are Date type, IDs are numeric
+1. In Power BI Desktop, click **Get Data** → **OData Feed**
+2. Enter the OData URL (see examples above), replacing `{org}` and `{project}` with your values
+3. Select **Organizational Account** and authenticate with your Azure DevOps credentials
+4. In Power Query Editor, transform data if needed:
+   - Expand nested columns (Area, Iteration, AssignedTo)
+   - Rename columns to match visual data roles
+   - Set correct data types (dates, numbers)
+5. Drag fields to the visual's data roles in the Fields pane
 
 ---
 
-## Tips and Best Practices
+## 7. Support and Maintenance
 
-### Data Preparation
+### 7.1 Troubleshooting
 
-- **Always include Work Item Type filter** to limit to Epic/Feature/Milestone
-- **Set appropriate date ranges** to avoid loading entire project history
-- **Ensure Parent IDs reference valid Epic Work Item IDs** for hierarchy
+| Issue | Resolution |
+|-------|------------|
+| Visual shows empty state | Ensure all required fields are mapped in the field well |
+| Items not appearing on timeline | Check that StartDate and TargetDate are valid dates, not null |
+| Parent-child relationships not showing | Verify ParentWorkItemId values match existing WorkItemIds |
+| Performance issues with large datasets | Filter data to show fewer items, or increase row height |
+| Swimlanes not grouping correctly | Ensure the grouping field has consistent values (no nulls) |
+| OData connection issues | Verify organization and project names in URL; check Azure DevOps permissions |
 
-### Visual Layout
-
-- **Use swimlanes for large datasets** to improve organization
-- **Group by Area Path** for team-based views
-- **Group by Iteration Path** for sprint-based views
-- **Collapse completed Epics** to focus on active work
-
-### Performance
-
-- **Limit data to 10,000 items** (visual's data reduction limit)
-- **Use OData $filter** to pre-filter at source
-- **Avoid loading unnecessary fields** if not using swimlanes
-
-### Color Coding
-
-- **Use consistent colors** across reports for work item types
-- **Consider colorblind-friendly palettes** for accessibility
-- **Match organizational standards** if applicable
-
----
-
-## Troubleshooting
-
-### Visual Not Loading
-
-- Verify all required fields are mapped (Work Item ID, Title, Type)
-- Check browser console (F12) for error messages
-- Ensure data has valid Epic/Feature/Milestone type values
-
-### No Timeline Bars Displayed
-
-- Verify Start Date and Target Date fields are mapped
-- Check that date fields are Date type, not Text
-- Ensure dates are not null for items requiring bars
-
-### Hierarchy Not Working
-
-- Verify Parent ID field is mapped
-- Parent ID values must match Epic Work Item IDs exactly
-- Features should reference their parent Epic's Work Item ID
-
-### Swimlanes Not Grouping
-
-- Enable "Show Swimlanes" in Format pane
-- Select a "Group By" option other than "None"
-- Ensure the grouping field has data
-
-### OData Connection Issues
-
-- Verify organization and project names in URL
-- Check Azure DevOps permissions (Analytics read access required)
-- Ensure correct authentication method (Organizational Account)
-
-### Certificate Errors (Development)
-
-Run the following command and restart Power BI Desktop:
-```bash
-pbiviz --install-cert
-```
-
----
-
-## Version History
+### 7.2 Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0.0 | January 2026 | Initial release with core roadmap functionality |
+| 2.0.0 | 17 January 2026 | Microsoft certification compliance, security hardening, architecture documentation, OData field reference |
+| 1.0.0 | 17 January 2026 | Initial release with core roadmap functionality |
 
 ---
 
-## Support
+## 8. Security Attestation
 
-For issues, feature requests, or questions:
+This section provides a formal attestation for governance and security review purposes.
 
-- **GitHub**: [https://github.com/swheller1/roadmap-visual](https://github.com/swheller1/roadmap-visual)
-- Open an issue with detailed reproduction steps
+### Developer Attestation
+
+I attest that the Roadmap Visual for Power BI:
+
+1. Does not transmit data to any external servers or services
+2. Does not store data persistently (no localStorage, cookies, IndexedDB)
+3. Executes entirely within the Power BI visual sandbox boundary
+4. Uses only approved Power BI Visuals SDK components
+5. Implements input sanitisation to prevent XSS attacks
+6. Does not include tracking, analytics, or telemetry capabilities
+
+| | |
+|---|---|
+| **Signature:** | _______________________________ |
+| **Name:** | _______________________________ |
+| **Position:** | _______________________________ |
+| **Date:** | _______________________________ |
+
+---
+
+*— End of Document —*
