@@ -338,6 +338,7 @@ This visual:
 ## Documentation
 
 - **[User Manual](USER_MANUAL.md)** — Comprehensive guide for end users
+- **[Test Report](TEST_REPORT.md)** — Comprehensive test report for version 1.0.0.0
 - **[README](README.md)** — This file, for developers and setup
 
 ---
