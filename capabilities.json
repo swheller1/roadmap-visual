@@ -228,6 +228,11 @@
           "displayName": "Milestone",
           "description": "Color for Milestone work items",
           "type": { "fill": { "solid": { "color": true } } }
+        },
+        "isHighContrast": {
+          "displayName": "High Contrast Mode",
+          "description": "Enable high contrast colors for accessibility",
+          "type": { "bool": true }
         }
       }
     },

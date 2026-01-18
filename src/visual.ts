@@ -66,6 +66,7 @@ interface VisualSettings {
     epicColor: string;
     milestoneColor: string;
     featureColor: string;
+    isHighContrast: boolean;
     // Milestone settings
     milestoneLabelPosition: "left" | "right" | "none";
     milestoneShowDate: boolean;
@@ -163,6 +164,7 @@ export class RoadmapVisual implements IVisual {
             epicColor: "#4F46E5",
             milestoneColor: "#DC2626",
             featureColor: "#0891B2",
+            isHighContrast: false,
             milestoneLabelPosition: "right",
             milestoneShowDate: false,
             showDependencies: false,
@@ -200,6 +202,9 @@ export class RoadmapVisual implements IVisual {
             // Parse data and settings
             this.parseData(dataView);
             this.parseSettings(dataView);
+
+            // Apply high contrast mode class
+            this.container.classed("high-contrast", this.settings.isHighContrast);
 
             if (this.workItems.length === 0) {
                 this.renderEmptyState("Add data fields to display the roadmap");
@@ -340,6 +345,7 @@ export class RoadmapVisual implements IVisual {
             this.settings.epicColor = getColor(objects.workItemColors.epicColor) || this.settings.epicColor;
             this.settings.milestoneColor = getColor(objects.workItemColors.milestoneColor) || this.settings.milestoneColor;
             this.settings.featureColor = getColor(objects.workItemColors.featureColor) || this.settings.featureColor;
+            this.settings.isHighContrast = Boolean(objects.workItemColors.isHighContrast);
         }
         // Milestone settings
         if (objects.milestones) {
@@ -1128,7 +1134,10 @@ export class RoadmapVisual implements IVisual {
     }
 
     private daysBetween(start: Date, end: Date): number {
-        return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+        // Normalize to UTC midnight to avoid DST edge cases
+        const startUtc = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+        const endUtc = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+        return Math.ceil((endUtc - startUtc) / (1000 * 60 * 60 * 24));
     }
 
     /**
@@ -1230,6 +1239,11 @@ export class RoadmapVisual implements IVisual {
     }
 
     public destroy(): void {
+        // Remove window event listeners to prevent memory leak
+        d3.select(window)
+            .on("mousemove.dragpan", null)
+            .on("mouseup.dragpan", null);
+
         this.container.selectAll("*").remove();
         this.workItems = [];
         this.collapsed.clear();
