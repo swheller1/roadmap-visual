@@ -1,0 +1,339 @@
+// Roadmap Visual Styles
+
+@bg: #F8FAFC;
+@card: #FFFFFF;
+@header: #F1F5F9;
+@swim: #E2E8F0;
+@border: #E2E8F0;
+@border-light: #F1F5F9;
+@text: #0F172A;
+@text-secondary: #475569;
+@text-muted: #94A3B8;
+@accent: #3B82F6;
+@today: #EF4444;
+
+.roadmap-container {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 12px;
+    color: @text;
+    background: @bg;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+// Header
+.header {
+    padding: 12px 16px;
+    background: @card;
+    border-bottom: 1px solid @border;
+
+    .title {
+        font-size: 16px;
+        font-weight: 600;
+        color: @text;
+    }
+
+    .subtitle {
+        font-size: 11px;
+        color: @text-muted;
+        margin-top: 2px;
+    }
+}
+
+// Main layout
+.main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    background: @card;
+}
+
+// Left panel
+.left-panel {
+    flex-shrink: 0;
+    border-right: 1px solid @border;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.left-header {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    background: @header;
+    border-bottom: 1px solid @border;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: @text-muted;
+    flex-shrink: 0;
+}
+
+.left-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+// Rows
+.row {
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    border-bottom: 1px solid @border-light;
+    cursor: default;
+    gap: 8px;
+
+    &:hover {
+        background: @bg;
+    }
+
+    &.row-parent {
+        background: @header;
+        cursor: pointer;
+        border-bottom-color: @border;
+
+        &:hover {
+            background: darken(@header, 3%);
+        }
+
+        .row-title {
+            font-weight: 600;
+        }
+    }
+
+    &.row-swimlane {
+        background: @swim;
+        cursor: pointer;
+        font-weight: 600;
+
+        &:hover {
+            background: darken(@swim, 5%);
+        }
+    }
+}
+
+.row-indicator {
+    width: 3px;
+    align-self: stretch;
+    margin-left: -10px;
+    margin-right: 7px;
+}
+
+.row-chevron {
+    font-size: 8px;
+    color: @text-muted;
+    width: 14px;
+}
+
+.row-id {
+    font-family: 'Consolas', 'SF Mono', monospace;
+    font-size: 10px;
+    color: @text-muted;
+}
+
+.row-title {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.row-count {
+    font-size: 10px;
+    color: @text-muted;
+    background: @card;
+    padding: 1px 6px;
+    border-radius: 8px;
+}
+
+// Timeline panel
+.timeline-panel {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.timeline-header {
+    height: 36px;
+    position: relative;
+    background: @header;
+    border-bottom: 1px solid @border;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.month-cell {
+    position: absolute;
+    top: 0;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: @text;
+    border-right: 1px solid @border-light;
+    box-sizing: border-box;
+}
+
+.timeline-body {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+}
+
+.timeline-inner {
+    position: relative;
+}
+
+// Grid
+.grid-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: @border-light;
+
+    &.grid-line-month {
+        background: @border;
+    }
+}
+
+// Today line
+.today-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: @today;
+    z-index: 15;
+}
+
+.today-label {
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: @today;
+    color: white;
+    font-size: 8px;
+    font-weight: 600;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+// Timeline rows
+.tl-row {
+    position: absolute;
+    left: 0;
+    right: 0;
+
+    &.tl-row-parent {
+        background: @header;
+    }
+
+    &.tl-row-swimlane {
+        background: @swim;
+    }
+}
+
+// Bars
+.bar {
+    position: absolute;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    overflow: hidden;
+    transition: transform 0.1s, box-shadow 0.1s;
+
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+        z-index: 10;
+    }
+}
+
+.bar-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+// Milestones
+.milestone {
+    position: absolute;
+    transform: rotate(45deg);
+    border-radius: 2px;
+    transition: transform 0.12s;
+    z-index: 5;
+
+    &:hover {
+        transform: rotate(45deg) scale(1.15);
+        z-index: 10;
+    }
+}
+
+// Empty state
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 40px;
+    color: @text-muted;
+
+    .empty-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+    }
+
+    .empty-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: @text-secondary;
+        margin-bottom: 8px;
+    }
+
+    .empty-text {
+        font-size: 12px;
+        line-height: 1.5;
+        margin-bottom: 8px;
+    }
+
+    .empty-help {
+        font-size: 11px;
+        color: @text-muted;
+    }
+}
+
+// Scrollbar styling
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: @border;
+    border-radius: 4px;
+
+    &:hover {
+        background: @text-muted;
+    }
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}

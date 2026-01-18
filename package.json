@@ -1,0 +1,35 @@
+{
+  "name": "roadmapVisual",
+  "displayName": "Roadmap Visual",
+  "version": "1.0.0",
+  "description": "Executive roadmap Gantt chart with swimlanes for Azure DevOps work items",
+  "author": {
+    "name": "Your Organisation",
+    "email": "support@yourorg.com"
+  },
+  "main": "src/visual.ts",
+  "scripts": {
+    "pbiviz": "pbiviz",
+    "start": "pbiviz start",
+    "package": "pbiviz package",
+    "lint": "tslint -c tslint.json -p tsconfig.json",
+    "audit": "pbiviz audit --fix"
+  },
+  "dependencies": {
+    "d3": "^7.8.5",
+    "powerbi-visuals-api": "~5.8.0",
+    "powerbi-visuals-utils-dataviewutils": "^6.0.2",
+    "powerbi-visuals-utils-formattingutils": "^6.0.1"
+  },
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "css-loader": "^6.8.1",
+    "less": "^4.2.0",
+    "less-loader": "^11.1.3",
+    "powerbi-visuals-tools": "^5.2.0",
+    "style-loader": "^3.3.3",
+    "ts-loader": "^9.5.1",
+    "tslint": "^6.1.3",
+    "typescript": "^5.3.3"
+  }
+}

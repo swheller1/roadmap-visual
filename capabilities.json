@@ -1,0 +1,182 @@
+{
+  "dataRoles": [
+    {
+      "name": "workItemId",
+      "displayName": "Work Item ID",
+      "kind": "Grouping",
+      "description": "Unique identifier for the work item"
+    },
+    {
+      "name": "title",
+      "displayName": "Title",
+      "kind": "Grouping",
+      "description": "Work item title"
+    },
+    {
+      "name": "workItemType",
+      "displayName": "Work Item Type",
+      "kind": "Grouping",
+      "description": "Type: Epic, Feature, or Milestone"
+    },
+    {
+      "name": "state",
+      "displayName": "State",
+      "kind": "Grouping",
+      "description": "Work item state (New, Active, Closed, etc.)"
+    },
+    {
+      "name": "startDate",
+      "displayName": "Start Date",
+      "kind": "Grouping",
+      "description": "Start date for the work item"
+    },
+    {
+      "name": "targetDate",
+      "displayName": "Target Date",
+      "kind": "Grouping",
+      "description": "Target/end date for the work item"
+    },
+    {
+      "name": "parentId",
+      "displayName": "Parent ID",
+      "kind": "Grouping",
+      "description": "Parent work item ID for hierarchy"
+    },
+    {
+      "name": "areaPath",
+      "displayName": "Area Path",
+      "kind": "Grouping",
+      "description": "Area path for swimlane grouping"
+    },
+    {
+      "name": "iterationPath",
+      "displayName": "Iteration Path",
+      "kind": "Grouping",
+      "description": "Iteration path for swimlane grouping"
+    },
+    {
+      "name": "assignedTo",
+      "displayName": "Assigned To",
+      "kind": "Grouping",
+      "description": "Person assigned to the work item"
+    },
+    {
+      "name": "priority",
+      "displayName": "Priority",
+      "kind": "Grouping",
+      "description": "Work item priority"
+    },
+    {
+      "name": "tags",
+      "displayName": "Tags",
+      "kind": "Grouping",
+      "description": "Work item tags"
+    }
+  ],
+  "dataViewMappings": [
+    {
+      "conditions": [
+        {
+          "workItemId": { "max": 1 },
+          "title": { "max": 1 },
+          "workItemType": { "max": 1 },
+          "state": { "max": 1 },
+          "startDate": { "max": 1 },
+          "targetDate": { "max": 1 },
+          "parentId": { "max": 1 },
+          "areaPath": { "max": 1 },
+          "iterationPath": { "max": 1 },
+          "assignedTo": { "max": 1 },
+          "priority": { "max": 1 },
+          "tags": { "max": 1 }
+        }
+      ],
+      "categorical": {
+        "categories": {
+          "select": [
+            { "for": { "in": "workItemId" } },
+            { "for": { "in": "title" } },
+            { "for": { "in": "workItemType" } },
+            { "for": { "in": "state" } },
+            { "for": { "in": "startDate" } },
+            { "for": { "in": "targetDate" } },
+            { "for": { "in": "parentId" } },
+            { "for": { "in": "areaPath" } },
+            { "for": { "in": "iterationPath" } },
+            { "for": { "in": "assignedTo" } },
+            { "for": { "in": "priority" } },
+            { "for": { "in": "tags" } }
+          ],
+          "dataReductionAlgorithm": {
+            "top": { "count": 10000 }
+          }
+        }
+      }
+    }
+  ],
+  "objects": {
+    "general": {
+      "displayName": "General",
+      "properties": {
+        "title": {
+          "displayName": "Title",
+          "type": { "text": true }
+        },
+        "subtitle": {
+          "displayName": "Subtitle",
+          "type": { "text": true }
+        }
+      }
+    },
+    "swimlanes": {
+      "displayName": "Swimlanes",
+      "properties": {
+        "show": {
+          "displayName": "Show Swimlanes",
+          "type": { "bool": true }
+        },
+        "groupBy": {
+          "displayName": "Group By",
+          "type": {
+            "enumeration": [
+              { "value": "none", "displayName": "None" },
+              { "value": "areaPath", "displayName": "Area Path" },
+              { "value": "iterationPath", "displayName": "Iteration Path" },
+              { "value": "assignedTo", "displayName": "Assigned To" },
+              { "value": "state", "displayName": "State" },
+              { "value": "priority", "displayName": "Priority" },
+              { "value": "tags", "displayName": "Tags" }
+            ]
+          }
+        }
+      }
+    },
+    "colors": {
+      "displayName": "Colors",
+      "properties": {
+        "epicColor": {
+          "displayName": "Epic Color",
+          "type": { "fill": { "solid": { "color": true } } }
+        },
+        "milestoneColor": {
+          "displayName": "Milestone Color",
+          "type": { "fill": { "solid": { "color": true } } }
+        },
+        "featureColor": {
+          "displayName": "Feature Color",
+          "type": { "fill": { "solid": { "color": true } } }
+        }
+      }
+    },
+    "dependencies": {
+      "displayName": "Dependencies",
+      "properties": {
+        "show": {
+          "displayName": "Show Dependencies",
+          "type": { "bool": true }
+        }
+      }
+    }
+  },
+  "privileges": []
+}
