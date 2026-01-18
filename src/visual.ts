@@ -101,6 +101,7 @@ interface RowData {
 
 // Constants
 const TYPES = ['Epic', 'Milestone', 'Feature'];
+const VISUAL_VERSION = '1.0.0.0';
 
 // Row heights for different density levels
 const ROW_HEIGHTS: { [density: string]: { [type: string]: number } } = {
@@ -466,6 +467,11 @@ export class RoadmapVisual implements IVisual {
         if (this.settings.showDependencies) {
             this.renderDependencyLines(timelineInner, rows, dayWidth);
         }
+
+        // Add version watermark (bottom right corner)
+        this.container.append("div")
+            .classed("version-watermark", true)
+            .text(`Roadmap Visual v${VISUAL_VERSION}`);
 
         // Sync scroll (disabled in PDF mode)
         if (!this.settings.pdfMode) {
