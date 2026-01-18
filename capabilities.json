@@ -162,6 +162,11 @@
               { "value": "4", "displayName": "400%" }
             ]
           }
+        },
+        "enableDragPan": {
+          "displayName": "Drag to Pan",
+          "description": "Click and drag to pan the timeline view",
+          "type": { "bool": true }
         }
       }
     },
@@ -223,6 +228,28 @@
           "displayName": "Milestone",
           "description": "Color for Milestone work items",
           "type": { "fill": { "solid": { "color": true } } }
+        }
+      }
+    },
+    "milestones": {
+      "displayName": "Milestones",
+      "description": "Configure milestone display options",
+      "properties": {
+        "labelPosition": {
+          "displayName": "Label Position",
+          "description": "Position of milestone title label",
+          "type": {
+            "enumeration": [
+              { "value": "right", "displayName": "Right" },
+              { "value": "left", "displayName": "Left" },
+              { "value": "none", "displayName": "No Label" }
+            ]
+          }
+        },
+        "showDate": {
+          "displayName": "Show Date",
+          "description": "Display the target date next to milestone",
+          "type": { "bool": true }
         }
       }
     },

@@ -50,6 +50,7 @@ interface VisualSettings {
     title: string;
     subtitle: string;
     rowDensity: 'compact' | 'normal' | 'comfortable';
+    enableDragPan: boolean;
     // Logo settings
     logoUrl: string;
     logoSize: 'small' | 'medium' | 'large';
@@ -62,6 +63,9 @@ interface VisualSettings {
     epicColor: string;
     milestoneColor: string;
     featureColor: string;
+    // Milestone settings
+    milestoneLabelPosition: 'left' | 'right' | 'none';
+    milestoneShowDate: boolean;
     // Dependencies
     showDependencies: boolean;
     showParentChild: boolean;
@@ -143,6 +147,7 @@ export class RoadmapVisual implements IVisual {
             title: "Roadmap",
             subtitle: "Work Items",
             rowDensity: "normal",
+            enableDragPan: true,
             logoUrl: "",
             logoSize: "medium",
             showLogo: true,
@@ -152,6 +157,8 @@ export class RoadmapVisual implements IVisual {
             epicColor: "#4F46E5",
             milestoneColor: "#DC2626",
             featureColor: "#0891B2",
+            milestoneLabelPosition: "right",
+            milestoneShowDate: false,
             showDependencies: false,
             showParentChild: true,
             showPredecessors: true,
@@ -287,7 +294,7 @@ export class RoadmapVisual implements IVisual {
         const objects = dataView.metadata?.objects;
         if (!objects) return;
 
-        // Display settings (View Scale, Row Density, Zoom)
+        // Display settings (View Scale, Row Density, Zoom, Drag Pan)
         if (objects.display) {
             const scale = String(objects.display.viewScale || 'monthly');
             if (['daily', 'weekly', 'monthly', 'annual', 'multiYear'].includes(scale)) {
@@ -301,6 +308,7 @@ export class RoadmapVisual implements IVisual {
             if ([0.5, 1, 2, 4].includes(zoom)) {
                 this.settings.zoomLevel = zoom;
             }
+            this.settings.enableDragPan = objects.display.enableDragPan !== false;
         }
         // Title & Subtitle
         if (objects.general) {
@@ -322,6 +330,14 @@ export class RoadmapVisual implements IVisual {
             this.settings.epicColor = getColor(objects.workItemColors.epicColor) || this.settings.epicColor;
             this.settings.milestoneColor = getColor(objects.workItemColors.milestoneColor) || this.settings.milestoneColor;
             this.settings.featureColor = getColor(objects.workItemColors.featureColor) || this.settings.featureColor;
+        }
+        // Milestone settings
+        if (objects.milestones) {
+            const labelPos = String(objects.milestones.labelPosition || 'right');
+            if (['left', 'right', 'none'].includes(labelPos)) {
+                this.settings.milestoneLabelPosition = labelPos as 'left' | 'right' | 'none';
+            }
+            this.settings.milestoneShowDate = Boolean(objects.milestones.showDate);
         }
         // Organization settings
         if (objects.organization) {
@@ -446,6 +462,48 @@ export class RoadmapVisual implements IVisual {
                     leftBodyNode.scrollTop = timelineBodyNode.scrollTop;
                     timelineHeaderWrapperNode.scrollLeft = timelineBodyNode.scrollLeft;
                 });
+
+                // Drag-to-pan functionality
+                if (this.settings.enableDragPan) {
+                    let isDragging = false;
+                    let startX = 0;
+                    let startY = 0;
+                    let scrollLeft = 0;
+                    let scrollTop = 0;
+
+                    timelineBody
+                        .style("cursor", "grab")
+                        .on("mousedown", (event: MouseEvent) => {
+                            // Only start drag on left mouse button and not on interactive elements
+                            if (event.button !== 0) return;
+                            const target = event.target as HTMLElement;
+                            if (target.closest('.bar, .milestone, .milestone-container')) return;
+
+                            isDragging = true;
+                            startX = event.pageX;
+                            startY = event.pageY;
+                            scrollLeft = timelineBodyNode.scrollLeft;
+                            scrollTop = timelineBodyNode.scrollTop;
+                            timelineBody.style("cursor", "grabbing");
+                            event.preventDefault();
+                        });
+
+                    // Use d3.select on window for move/up to capture events outside the element
+                    d3.select(window)
+                        .on("mousemove.dragpan", (event: MouseEvent) => {
+                            if (!isDragging) return;
+                            const dx = event.pageX - startX;
+                            const dy = event.pageY - startY;
+                            timelineBodyNode.scrollLeft = scrollLeft - dx;
+                            timelineBodyNode.scrollTop = scrollTop - dy;
+                        })
+                        .on("mouseup.dragpan", () => {
+                            if (isDragging) {
+                                isDragging = false;
+                                timelineBody.style("cursor", "grab");
+                            }
+                        });
+                }
             }
         }
     }
@@ -621,16 +679,46 @@ export class RoadmapVisual implements IVisual {
             if (!item.targetDate) return;
             const x = this.daysBetween(this.viewStart, item.targetDate) * dayWidth;
             const size = this.getBarHeight("Milestone");
-            const el = rowEl.append("div")
+
+            // Create a container for milestone and its label
+            const milestoneContainer = rowEl.append("div")
+                .classed("milestone-container", true)
+                .style("position", "absolute")
+                .style("top", `${(row.height - size)/2}px`)
+                .style("height", `${size}px`)
+                .style("display", "flex")
+                .style("align-items", "center");
+
+            // Position container based on label position
+            if (this.settings.milestoneLabelPosition === 'left') {
+                milestoneContainer.style("right", `calc(100% - ${x + size/2}px)`).style("flex-direction", "row-reverse");
+            } else {
+                milestoneContainer.style("left", `${x - size/2}px`);
+            }
+
+            const el = milestoneContainer.append("div")
                 .classed("milestone", true)
                 .attr("data-id", item.id)
-                .style("left", `${x - size/2}px`)
-                .style("top", `${(row.height - size)/2}px`)
                 .style("width", `${size}px`)
                 .style("height", `${size}px`)
                 .style("background", color)
+                .style("flex-shrink", "0")
                 .attr("title", `${item.workItemId}: ${item.title}`);
             this.addBarInteractivity(el, item);
+
+            // Add label if not 'none'
+            if (this.settings.milestoneLabelPosition !== 'none') {
+                let labelText = `${item.workItemId}: ${item.title}`;
+                if (this.settings.milestoneShowDate) {
+                    const dateStr = item.targetDate.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
+                    labelText = `${dateStr} - ${labelText}`;
+                }
+                milestoneContainer.append("span")
+                    .classed("milestone-label", true)
+                    .style("margin-left", this.settings.milestoneLabelPosition === 'right' ? "6px" : "0")
+                    .style("margin-right", this.settings.milestoneLabelPosition === 'left' ? "6px" : "0")
+                    .text(labelText);
+            }
         } else {
             if (!item.startDate || !item.targetDate) return;
             const startX = this.daysBetween(this.viewStart, item.startDate) * dayWidth;

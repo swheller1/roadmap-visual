@@ -385,17 +385,28 @@
 }
 
 // Milestones
+.milestone-container {
+    z-index: 5;
+    white-space: nowrap;
+}
+
 .milestone {
-    position: absolute;
     transform: rotate(45deg);
     border-radius: 2px;
     transition: transform 0.12s;
-    z-index: 5;
 
     &:hover {
         transform: rotate(45deg) scale(1.15);
-        z-index: 10;
     }
+}
+
+.milestone-label {
+    font-size: 10px;
+    color: @text-secondary;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 // Empty state
@@ -482,6 +493,10 @@
 
     .milestone:hover {
         transform: rotate(45deg);
+    }
+
+    .milestone-label {
+        max-width: none;
     }
 
     // Ensure all content is visible
