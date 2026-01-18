@@ -52,11 +52,11 @@ interface WorkItem {
 interface VisualSettings {
     title: string;
     subtitle: string;
-    rowDensity: 'compact' | 'normal' | 'comfortable';
+    rowDensity: "compact" | "normal" | "comfortable";
     enableDragPan: boolean;
     // Logo settings
     logoUrl: string;
-    logoSize: 'small' | 'medium' | 'large';
+    logoSize: "small" | "medium" | "large";
     showLogo: boolean;
     // Organization settings
     groupBy: string;
@@ -67,7 +67,7 @@ interface VisualSettings {
     milestoneColor: string;
     featureColor: string;
     // Milestone settings
-    milestoneLabelPosition: 'left' | 'right' | 'none';
+    milestoneLabelPosition: "left" | "right" | "none";
     milestoneShowDate: boolean;
     // Dependencies
     showDependencies: boolean;
@@ -79,7 +79,7 @@ interface VisualSettings {
     showFeatures: boolean;
     showMilestones: boolean;
     // Time scale settings
-    timeScale: 'daily' | 'weekly' | 'monthly' | 'annual' | 'multiYear';
+    timeScale: "daily" | "weekly" | "monthly" | "annual" | "multiYear";
     zoomLevel: number;
     // Export settings
     pdfMode: boolean;
@@ -100,8 +100,8 @@ interface RowData {
 }
 
 // Constants
-const TYPES = ['Epic', 'Milestone', 'Feature'];
-const VISUAL_VERSION = '1.0.0.0';
+const TYPES = ["Epic", "Milestone", "Feature"];
+const VISUAL_VERSION = "1.0.0.0";
 
 // Row heights for different density levels
 const ROW_HEIGHTS: { [density: string]: { [type: string]: number } } = {
@@ -172,7 +172,7 @@ export class RoadmapVisual implements IVisual {
             showEpics: true,
             showFeatures: true,
             showMilestones: true,
-            timeScale: 'monthly',
+            timeScale: "monthly",
             zoomLevel: 1,
             pdfMode: false,
             securityClassification: ""
@@ -303,15 +303,15 @@ export class RoadmapVisual implements IVisual {
 
         // Display settings (View Scale, Row Density, Zoom, Drag Pan)
         if (objects.display) {
-            const scale = String(objects.display.viewScale || 'monthly');
-            if (['daily', 'weekly', 'monthly', 'annual', 'multiYear'].includes(scale)) {
-                this.settings.timeScale = scale as 'daily' | 'weekly' | 'monthly' | 'annual' | 'multiYear';
+            const scale = String(objects.display.viewScale || "monthly");
+            if (["daily", "weekly", "monthly", "annual", "multiYear"].includes(scale)) {
+                this.settings.timeScale = scale as "daily" | "weekly" | "monthly" | "annual" | "multiYear";
             }
-            const density = String(objects.display.rowDensity || 'normal');
-            if (['compact', 'normal', 'comfortable'].includes(density)) {
-                this.settings.rowDensity = density as 'compact' | 'normal' | 'comfortable';
+            const density = String(objects.display.rowDensity || "normal");
+            if (["compact", "normal", "comfortable"].includes(density)) {
+                this.settings.rowDensity = density as "compact" | "normal" | "comfortable";
             }
-            const zoom = parseFloat(String(objects.display.zoomLevel || '1'));
+            const zoom = parseFloat(String(objects.display.zoomLevel || "1"));
             if ([0.5, 1, 2, 4].includes(zoom)) {
                 this.settings.zoomLevel = zoom;
             }
@@ -325,24 +325,27 @@ export class RoadmapVisual implements IVisual {
         // Logo settings
         if (objects.logo) {
             this.settings.logoUrl = this.sanitizeUrl(String(objects.logo.imageUrl || ""));
-            const size = String(objects.logo.size || 'medium');
-            if (['small', 'medium', 'large'].includes(size)) {
-                this.settings.logoSize = size as 'small' | 'medium' | 'large';
+            const size = String(objects.logo.size || "medium");
+            if (["small", "medium", "large"].includes(size)) {
+                this.settings.logoSize = size as "small" | "medium" | "large";
             }
             this.settings.showLogo = objects.logo.show !== false;
         }
         // Work Item Colors
         if (objects.workItemColors) {
-            const getColor = (obj: any): string | undefined => obj?.solid?.color;
+            const getColor = (obj: unknown): string | undefined => {
+                const colorObj = obj as { solid?: { color?: string } };
+                return colorObj?.solid?.color;
+            };
             this.settings.epicColor = getColor(objects.workItemColors.epicColor) || this.settings.epicColor;
             this.settings.milestoneColor = getColor(objects.workItemColors.milestoneColor) || this.settings.milestoneColor;
             this.settings.featureColor = getColor(objects.workItemColors.featureColor) || this.settings.featureColor;
         }
         // Milestone settings
         if (objects.milestones) {
-            const labelPos = String(objects.milestones.labelPosition || 'right');
-            if (['left', 'right', 'none'].includes(labelPos)) {
-                this.settings.milestoneLabelPosition = labelPos as 'left' | 'right' | 'none';
+            const labelPos = String(objects.milestones.labelPosition || "right");
+            if (["left", "right", "none"].includes(labelPos)) {
+                this.settings.milestoneLabelPosition = labelPos as "left" | "right" | "none";
             }
             this.settings.milestoneShowDate = Boolean(objects.milestones.showDate);
         }
@@ -363,7 +366,7 @@ export class RoadmapVisual implements IVisual {
             this.settings.showDependencies = Boolean(objects.dependencies.show);
             this.settings.showParentChild = objects.dependencies.showParentChild !== false;
             this.settings.showPredecessors = objects.dependencies.showPredecessors !== false;
-            const lineColor = (objects.dependencies.lineColor as any)?.solid?.color;
+            const lineColor = (objects.dependencies.lineColor as { solid?: { color?: string } })?.solid?.color;
             if (lineColor) this.settings.dependencyLineColor = lineColor;
         }
         // Export settings
@@ -499,7 +502,7 @@ export class RoadmapVisual implements IVisual {
                             // Only start drag on left mouse button and not on interactive elements
                             if (event.button !== 0) return;
                             const target = event.target as HTMLElement;
-                            if (target.closest('.bar, .milestone, .milestone-container')) return;
+                            if (target.closest(".bar, .milestone, .milestone-container")) return;
 
                             isDragging = true;
                             startX = event.pageX;
@@ -559,9 +562,9 @@ export class RoadmapVisual implements IVisual {
 
         // Filter work items by level visibility
         const visibleItems = this.workItems.filter(w => {
-            if (w.type === 'Epic' && !this.settings.showEpics) return false;
-            if (w.type === 'Feature' && !this.settings.showFeatures) return false;
-            if (w.type === 'Milestone' && !this.settings.showMilestones) return false;
+            if (w.type === "Epic" && !this.settings.showEpics) return false;
+            if (w.type === "Feature" && !this.settings.showFeatures) return false;
+            if (w.type === "Milestone" && !this.settings.showMilestones) return false;
             return true;
         });
 
@@ -631,14 +634,14 @@ export class RoadmapVisual implements IVisual {
 
     private getGroupKey(item: WorkItem): string {
         const fieldMap: { [key: string]: keyof WorkItem } = {
-            areaPath: 'areaPath',
-            iterationPath: 'iterationPath',
-            assignedTo: 'assignedTo',
-            state: 'state',
-            priority: 'priority',
-            tags: 'tags'
+            areaPath: "areaPath",
+            iterationPath: "iterationPath",
+            assignedTo: "assignedTo",
+            state: "state",
+            priority: "priority",
+            tags: "tags"
         };
-        const field = fieldMap[this.settings.groupBy] || 'areaPath';
+        const field = fieldMap[this.settings.groupBy] || "areaPath";
         const value = item[field];
         if (!value) return "Unassigned";
         if (field === "areaPath" || field === "iterationPath") {
@@ -706,16 +709,16 @@ export class RoadmapVisual implements IVisual {
             const milestoneContainer = rowEl.append("div")
                 .classed("milestone-container", true)
                 .style("position", "absolute")
-                .style("top", `${(row.height - size)/2}px`)
+                .style("top", `${(row.height - size) / 2}px`)
                 .style("height", `${size}px`)
                 .style("display", "flex")
                 .style("align-items", "center");
 
             // Position container based on label position
-            if (this.settings.milestoneLabelPosition === 'left') {
-                milestoneContainer.style("right", `calc(100% - ${x + size/2}px)`).style("flex-direction", "row-reverse");
+            if (this.settings.milestoneLabelPosition === "left") {
+                milestoneContainer.style("right", `calc(100% - ${x + size / 2}px)`).style("flex-direction", "row-reverse");
             } else {
-                milestoneContainer.style("left", `${x - size/2}px`);
+                milestoneContainer.style("left", `${x - size / 2}px`);
             }
 
             const el = milestoneContainer.append("div")
@@ -729,7 +732,7 @@ export class RoadmapVisual implements IVisual {
             this.addBarInteractivity(el, item);
 
             // Add label if not 'none'
-            if (this.settings.milestoneLabelPosition !== 'none') {
+            if (this.settings.milestoneLabelPosition !== "none") {
                 let labelText = `${item.workItemId}: ${item.title}`;
                 if (this.settings.milestoneShowDate) {
                     const dateStr = item.targetDate.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
@@ -737,8 +740,8 @@ export class RoadmapVisual implements IVisual {
                 }
                 milestoneContainer.append("span")
                     .classed("milestone-label", true)
-                    .style("margin-left", this.settings.milestoneLabelPosition === 'right' ? "6px" : "0")
-                    .style("margin-right", this.settings.milestoneLabelPosition === 'left' ? "6px" : "0")
+                    .style("margin-left", this.settings.milestoneLabelPosition === "right" ? "6px" : "0")
+                    .style("margin-right", this.settings.milestoneLabelPosition === "left" ? "6px" : "0")
                     .text(labelText);
             }
         } else {
@@ -753,7 +756,7 @@ export class RoadmapVisual implements IVisual {
                 .style("left", `${startX}px`)
                 .style("width", `${width}px`)
                 .style("height", `${barHeight}px`)
-                .style("top", `${(row.height - barHeight)/2}px`)
+                .style("top", `${(row.height - barHeight) / 2}px`)
                 .style("background", color)
                 .attr("title", `${item.workItemId}: ${item.title}`);
             if (width > 50) bar.append("span").classed("bar-label", true).text(`${item.workItemId} · ${item.title}`);
@@ -866,7 +869,7 @@ export class RoadmapVisual implements IVisual {
                     // Arrow at destination
                     const arrowSize = 6;
                     svgContainer.append("polygon")
-                        .attr("points", `${itemStartX},${itemY} ${itemStartX - arrowSize},${itemY - arrowSize/2} ${itemStartX - arrowSize},${itemY + arrowSize/2}`)
+                        .attr("points", `${itemStartX},${itemY} ${itemStartX - arrowSize},${itemY - arrowSize / 2} ${itemStartX - arrowSize},${itemY + arrowSize / 2}`)
                         .attr("fill", lineColor)
                         .attr("opacity", "0.8");
                 }
@@ -881,23 +884,23 @@ export class RoadmapVisual implements IVisual {
 
     private renderTimeHeaders(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, viewEnd: Date, dayWidth: number): void {
         switch (this.settings.timeScale) {
-            case 'daily':
-                this.renderDailyHeaders(container, viewEnd, dayWidth);
-                break;
-            case 'weekly':
-                this.renderWeeklyHeaders(container, viewEnd, dayWidth);
-                break;
-            case 'monthly':
-                this.renderMonthlyHeaders(container, viewEnd, dayWidth);
-                break;
-            case 'annual':
-                this.renderAnnualHeaders(container, viewEnd, dayWidth);
-                break;
-            case 'multiYear':
-                this.renderMultiYearHeaders(container, viewEnd, dayWidth);
-                break;
-            default:
-                this.renderMonthlyHeaders(container, viewEnd, dayWidth);
+        case "daily":
+            this.renderDailyHeaders(container, viewEnd, dayWidth);
+            break;
+        case "weekly":
+            this.renderWeeklyHeaders(container, viewEnd, dayWidth);
+            break;
+        case "monthly":
+            this.renderMonthlyHeaders(container, viewEnd, dayWidth);
+            break;
+        case "annual":
+            this.renderAnnualHeaders(container, viewEnd, dayWidth);
+            break;
+        case "multiYear":
+            this.renderMultiYearHeaders(container, viewEnd, dayWidth);
+            break;
+        default:
+            this.renderMonthlyHeaders(container, viewEnd, dayWidth);
         }
     }
 
@@ -1018,54 +1021,54 @@ export class RoadmapVisual implements IVisual {
         return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     }
 
-    private renderGrid(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, totalDays: number, dayWidth: number, viewEnd: Date): void {
+    private renderGrid(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, totalDays: number, dayWidth: number, _viewEnd: Date): void {
         switch (this.settings.timeScale) {
-            case 'daily':
-                for (let i = 0; i < totalDays; i++) {
-                    const date = this.addDays(this.viewStart, i);
-                    const isMonth = date.getDate() === 1;
-                    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                    container.append("div").classed("grid-line", true).classed("grid-line-month", isMonth).classed("grid-line-weekend", isWeekend).style("left", `${i * dayWidth}px`);
+        case "daily":
+            for (let i = 0; i < totalDays; i++) {
+                const date = this.addDays(this.viewStart, i);
+                const isMonth = date.getDate() === 1;
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                container.append("div").classed("grid-line", true).classed("grid-line-month", isMonth).classed("grid-line-weekend", isWeekend).style("left", `${i * dayWidth}px`);
+            }
+            break;
+        case "weekly":
+            for (let i = 0; i < totalDays; i++) {
+                const date = this.addDays(this.viewStart, i);
+                const isMonth = date.getDate() === 1;
+                const isMonday = date.getDay() === 1;
+                if (isMonth || isMonday) {
+                    container.append("div").classed("grid-line", true).classed("grid-line-month", isMonth).classed("grid-line-week", isMonday && !isMonth).style("left", `${i * dayWidth}px`);
                 }
-                break;
-            case 'weekly':
-                for (let i = 0; i < totalDays; i++) {
-                    const date = this.addDays(this.viewStart, i);
-                    const isMonth = date.getDate() === 1;
-                    const isMonday = date.getDay() === 1;
-                    if (isMonth || isMonday) {
-                        container.append("div").classed("grid-line", true).classed("grid-line-month", isMonth).classed("grid-line-week", isMonday && !isMonth).style("left", `${i * dayWidth}px`);
-                    }
+            }
+            break;
+        case "monthly":
+            for (let i = 0; i < totalDays; i++) {
+                const date = this.addDays(this.viewStart, i);
+                if (date.getDate() === 1) {
+                    container.append("div").classed("grid-line", true).classed("grid-line-month", true).style("left", `${i * dayWidth}px`);
                 }
-                break;
-            case 'monthly':
-                for (let i = 0; i < totalDays; i++) {
-                    const date = this.addDays(this.viewStart, i);
-                    if (date.getDate() === 1) {
-                        container.append("div").classed("grid-line", true).classed("grid-line-month", true).style("left", `${i * dayWidth}px`);
-                    }
+            }
+            break;
+        case "annual":
+            for (let i = 0; i < totalDays; i++) {
+                const date = this.addDays(this.viewStart, i);
+                const isYear = date.getMonth() === 0 && date.getDate() === 1;
+                const isQuarter = date.getDate() === 1 && date.getMonth() % 3 === 0;
+                if (isYear || isQuarter) {
+                    container.append("div").classed("grid-line", true).classed("grid-line-year", isYear).classed("grid-line-quarter", isQuarter && !isYear).style("left", `${i * dayWidth}px`);
                 }
-                break;
-            case 'annual':
-                for (let i = 0; i < totalDays; i++) {
-                    const date = this.addDays(this.viewStart, i);
-                    const isYear = date.getMonth() === 0 && date.getDate() === 1;
-                    const isQuarter = date.getDate() === 1 && date.getMonth() % 3 === 0;
-                    if (isYear || isQuarter) {
-                        container.append("div").classed("grid-line", true).classed("grid-line-year", isYear).classed("grid-line-quarter", isQuarter && !isYear).style("left", `${i * dayWidth}px`);
-                    }
+            }
+            break;
+        case "multiYear":
+            // Grid lines only at year boundaries for multi-year view
+            for (let i = 0; i < totalDays; i++) {
+                const date = this.addDays(this.viewStart, i);
+                const isYear = date.getMonth() === 0 && date.getDate() === 1;
+                if (isYear) {
+                    container.append("div").classed("grid-line", true).classed("grid-line-year", true).style("left", `${i * dayWidth}px`);
                 }
-                break;
-            case 'multiYear':
-                // Grid lines only at year boundaries for multi-year view
-                for (let i = 0; i < totalDays; i++) {
-                    const date = this.addDays(this.viewStart, i);
-                    const isYear = date.getMonth() === 0 && date.getDate() === 1;
-                    if (isYear) {
-                        container.append("div").classed("grid-line", true).classed("grid-line-year", true).style("left", `${i * dayWidth}px`);
-                    }
-                }
-                break;
+            }
+            break;
         }
     }
 
@@ -1111,7 +1114,7 @@ export class RoadmapVisual implements IVisual {
         return "";
     }
 
-    private parseDate(value: any): Date | null {
+    private parseDate(value: string | number | Date | null | undefined): Date | null {
         if (!value) return null;
         const d = new Date(value);
         d.setHours(0, 0, 0, 0);
@@ -1215,7 +1218,7 @@ export class RoadmapVisual implements IVisual {
                 minute: "2-digit"
             });
             pdf.text(`Generated: ${dateStr}`, margin, pageHeight - margin + 5);
-            pdf.text(`Page 1 of 1`, pageWidth - margin, pageHeight - margin + 5, { align: "right" });
+            pdf.text("Page 1 of 1", pageWidth - margin, pageHeight - margin + 5, { align: "right" });
 
             // Save the PDF
             const filename = `${this.settings.title.replace(/[^a-zA-Z0-9]/g, "_")}_Roadmap.pdf`;
