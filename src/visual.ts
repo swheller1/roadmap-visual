@@ -10,6 +10,7 @@
  *  - No external service calls
  *  - Dependency line rendering
  *  - Flexible grouping options
+ *  - PDF export with PSPF security classification
  */
 
 "use strict";
@@ -24,6 +25,8 @@ import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import ISelectionId = powerbi.visuals.ISelectionId;
 
 import * as d3 from "d3";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 
 import "./../style/visual.less";
 
@@ -80,6 +83,8 @@ interface VisualSettings {
     zoomLevel: number;
     // Export settings
     pdfMode: boolean;
+    // PDF Export settings (PSPF security classification)
+    securityClassification: string;
 }
 
 interface RowData {
@@ -168,7 +173,8 @@ export class RoadmapVisual implements IVisual {
             showMilestones: true,
             timeScale: 'monthly',
             zoomLevel: 1,
-            pdfMode: false
+            pdfMode: false,
+            securityClassification: ""
         };
     }
 
@@ -363,6 +369,10 @@ export class RoadmapVisual implements IVisual {
         if (objects.export) {
             this.settings.pdfMode = Boolean(objects.export.pdfMode);
         }
+        // PDF Export settings (PSPF security classification)
+        if (objects.pdfExport) {
+            this.settings.securityClassification = this.sanitizeString(String(objects.pdfExport.securityClassification || ""));
+        }
     }
 
     private render(width: number, height: number, viewEnd: Date): void {
@@ -402,6 +412,12 @@ export class RoadmapVisual implements IVisual {
         const headerText = header.append("div").classed("header-text", true);
         headerText.append("div").classed("title", true).text(this.settings.title);
         headerText.append("div").classed("subtitle", true).text(this.settings.subtitle);
+
+        // Export button
+        header.append("button")
+            .classed("export-btn", true)
+            .text("Export PDF")
+            .on("click", () => this.exportToPdf());
 
         // Main container - add pdf-mode class for export optimization
         const main = this.container.append("div").classed("main", true).classed("pdf-mode", this.settings.pdfMode);
@@ -1104,6 +1120,104 @@ export class RoadmapVisual implements IVisual {
 
     private daysBetween(start: Date, end: Date): number {
         return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    /**
+     * Export the roadmap to PDF with security classification markings
+     * Per PSPF guidelines: centered at top and bottom, red, bold, capitals
+     */
+    private async exportToPdf(): Promise<void> {
+        const containerNode = this.container.node();
+        if (!containerNode) return;
+
+        try {
+            // Capture the visual content
+            const canvas = await html2canvas(containerNode, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: "#FFFFFF"
+            });
+
+            // Create PDF in landscape A4
+            const pdf = new jsPDF({
+                orientation: "landscape",
+                unit: "mm",
+                format: "a4"
+            });
+
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 15;
+            const headerFooterHeight = 12;
+            const securityClassification = this.settings.securityClassification.toUpperCase();
+
+            // Calculate content area
+            const contentStartY = margin + (securityClassification ? headerFooterHeight : 0) + (this.settings.showLogo && this.settings.logoUrl ? 15 : 0);
+            const contentEndY = pageHeight - margin - (securityClassification ? headerFooterHeight : 0);
+            const contentHeight = contentEndY - contentStartY;
+            const contentWidth = pageWidth - (margin * 2);
+
+            // Draw security classification at TOP (PSPF requirement: center top, red, bold, capitals)
+            if (securityClassification) {
+                pdf.setFont("helvetica", "bold");
+                pdf.setFontSize(14);
+                pdf.setTextColor(220, 38, 38); // Red color (#DC2626)
+                pdf.text(securityClassification, pageWidth / 2, margin + 5, { align: "center" });
+            }
+
+            // Draw logo if enabled
+            if (this.settings.showLogo && this.settings.logoUrl) {
+                try {
+                    const logoY = margin + (securityClassification ? headerFooterHeight : 0);
+                    // Center the logo, assume max height of 12mm
+                    pdf.addImage(this.settings.logoUrl, "PNG", (pageWidth - 40) / 2, logoY, 40, 12);
+                } catch (logoError) {
+                    console.warn("Failed to add logo to PDF:", logoError);
+                }
+            }
+
+            // Add the captured content
+            const imgData = canvas.toDataURL("image/png");
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+            const ratio = Math.min(contentWidth / imgWidth, contentHeight / imgHeight);
+            const scaledWidth = imgWidth * ratio;
+            const scaledHeight = imgHeight * ratio;
+            const imgX = margin + (contentWidth - scaledWidth) / 2;
+            const imgY = contentStartY + (contentHeight - scaledHeight) / 2;
+
+            pdf.addImage(imgData, "PNG", imgX, imgY, scaledWidth, scaledHeight);
+
+            // Draw security classification at BOTTOM (PSPF requirement: center bottom, red, bold, capitals)
+            if (securityClassification) {
+                pdf.setFont("helvetica", "bold");
+                pdf.setFontSize(14);
+                pdf.setTextColor(220, 38, 38); // Red color (#DC2626)
+                pdf.text(securityClassification, pageWidth / 2, pageHeight - margin, { align: "center" });
+            }
+
+            // Add footer with generation date
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(8);
+            pdf.setTextColor(100, 100, 100);
+            const dateStr = new Date().toLocaleDateString("en-AU", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+            pdf.text(`Generated: ${dateStr}`, margin, pageHeight - margin + 5);
+            pdf.text(`Page 1 of 1`, pageWidth - margin, pageHeight - margin + 5, { align: "right" });
+
+            // Save the PDF
+            const filename = `${this.settings.title.replace(/[^a-zA-Z0-9]/g, "_")}_Roadmap.pdf`;
+            pdf.save(filename);
+
+        } catch (error) {
+            console.error("PDF export failed:", error);
+        }
     }
 
     public destroy(): void {
