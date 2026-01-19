@@ -207,7 +207,7 @@ The visual requires specific data fields to render correctly. Map your data sour
 | Expand/collapse Epic | Click on an Epic row to show/hide child items |
 | Expand/collapse swimlane | Click on a swimlane header |
 | Edit title/subtitle | Click on the title or subtitle text to edit inline |
-| Print/Export PDF | Use browser print dialog (Ctrl+P) |
+| Print to PDF | Enable "Print-Friendly Mode" in settings, then use browser print (Ctrl+P) |
 
 ### 5.3 Zoom Levels
 
@@ -229,6 +229,7 @@ Access settings via the Settings button (gear icon) in the visual toolbar. Avail
 - **Bar display:** Choose which fields appear on timeline bars
 - **Row and bar heights:** Adjust sizing for dense or spacious layouts
 - **Dependencies:** Toggle dependency lines on/off
+- **Print-Friendly Mode:** Expands all items for optimal browser print-to-PDF output
 
 ---
 
@@ -305,11 +306,13 @@ https://analytics.dev.azure.com/{org}/{project}/_odata/v4.0-preview/WorkItems?
 | Performance issues with large datasets | Filter data to show fewer items, or increase row height |
 | Swimlanes not grouping correctly | Ensure the grouping field has consistent values (no nulls) |
 | OData connection issues | Verify organization and project names in URL; check Azure DevOps permissions |
+| Power BI "Export to PDF" shows error | Power BI's native PDF export doesn't work with this visual. Use browser print (Ctrl+P) with "Print-Friendly Mode" enabled instead |
 
 ### 7.2 Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.0.1 | 19 January 2026 | Removed non-functional PDF export button; use browser print (Ctrl+P) with Print-Friendly Mode instead |
 | 2.0.0 | 17 January 2026 | Microsoft certification compliance, security hardening, architecture documentation, OData field reference |
 | 1.0.0 | 17 January 2026 | Initial release with core roadmap functionality |
 
