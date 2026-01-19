@@ -470,6 +470,29 @@ export class RoadmapVisual implements IVisual {
         headerText.append("div").classed("title", true).text(this.settings.title);
         headerText.append("div").classed("subtitle", true).text(this.settings.subtitle);
 
+        // View toggle buttons (Day/Week/Month/Year)
+        const viewToggle = header.append("div")
+            .classed("view-toggle", true)
+            .attr("role", "group")
+            .attr("aria-label", "Timeline view scale");
+
+        const viewOptions: Array<{ value: TimeScale; label: string }> = [
+            { value: "daily", label: "Day" },
+            { value: "weekly", label: "Week" },
+            { value: "monthly", label: "Month" },
+            { value: "annual", label: "Year" }
+        ];
+
+        viewOptions.forEach(option => {
+            viewToggle.append("button")
+                .classed("view-toggle-btn", true)
+                .classed("active", this.settings.timeScale === option.value)
+                .attr("data-value", option.value)
+                .attr("aria-pressed", this.settings.timeScale === option.value ? "true" : "false")
+                .text(option.label)
+                .on("click", () => this.setTimeScale(option.value));
+        });
+
         // Export button
         header.append("button")
             .classed("export-btn", true)
@@ -1219,6 +1242,24 @@ export class RoadmapVisual implements IVisual {
         if (this.collapsed.has(key)) this.collapsed.delete(key);
         else this.collapsed.add(key);
         this.host.refreshHostData();
+    }
+
+    private setTimeScale(scale: TimeScale): void {
+        if (this.settings.timeScale === scale) return;
+
+        // Update setting locally
+        this.settings.timeScale = scale;
+
+        // Persist the setting to Power BI
+        this.host.persistProperties({
+            merge: [{
+                objectName: "display",
+                selector: null,
+                properties: {
+                    viewScale: scale
+                }
+            }]
+        });
     }
 
     private getColor(type: string): string {
