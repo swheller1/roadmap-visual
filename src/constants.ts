@@ -6,7 +6,7 @@
  */
 
 // Visual version for watermark
-export const VISUAL_VERSION = "1.0.0.0";
+export const VISUAL_VERSION = "2.0.1";
 
 // Work item types in hierarchy order
 export const WORK_ITEM_TYPES = ["Epic", "Milestone", "Feature"] as const;
