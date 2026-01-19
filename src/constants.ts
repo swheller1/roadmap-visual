@@ -6,10 +6,10 @@
  */
 
 // Visual version for watermark
-export const VISUAL_VERSION = "1.0.0.0";
+export const VISUAL_VERSION = "2.0.1";
 
 // Work item types in hierarchy order
-export const WORK_ITEM_TYPES = ["Epic", "Milestone", "Feature"] as const;
+export const WORK_ITEM_TYPES = ["Epic", "Release", "Milestone", "Feature"] as const;
 export type WorkItemType = typeof WORK_ITEM_TYPES[number];
 
 // Layout constants
@@ -45,18 +45,21 @@ export type LogoSize = keyof typeof LOGO_SIZES;
 export const ROW_HEIGHTS: Record<string, Record<string, number>> = {
     compact: {
         Epic: 32,
+        Release: 32,
         Milestone: 28,
         Feature: 30,
         GroupHeader: 30
     },
     normal: {
         Epic: 48,
+        Release: 48,
         Milestone: 40,
         Feature: 44,
         GroupHeader: 44
     },
     comfortable: {
         Epic: 56,
+        Release: 56,
         Milestone: 48,
         Feature: 52,
         GroupHeader: 52
@@ -67,16 +70,19 @@ export const ROW_HEIGHTS: Record<string, Record<string, number>> = {
 export const BAR_HEIGHTS: Record<string, Record<string, number>> = {
     compact: {
         Epic: 22,
+        Release: 22,
         Milestone: 14,
         Feature: 20
     },
     normal: {
         Epic: 32,
+        Release: 32,
         Milestone: 18,
         Feature: 28
     },
     comfortable: {
         Epic: 40,
+        Release: 40,
         Milestone: 22,
         Feature: 36
     },
@@ -159,9 +165,10 @@ export const DEPENDENCY_LINES = {
 
 // Default colors
 export const DEFAULT_COLORS = {
-    epic: "#4F46E5",
-    milestone: "#DC2626",
-    feature: "#0891B2",
+    epic: "#ff7b00",
+    release: "#51399f",
+    milestone: "#ec008c",
+    feature: "#773b93",
     dependencyLine: "#94A3B8",
 } as const;
 

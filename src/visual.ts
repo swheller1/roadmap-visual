@@ -87,6 +87,7 @@ interface VisualSettings {
     defaultExpanded: boolean;
     // Colors
     epicColor: string;
+    releaseColor: string;
     milestoneColor: string;
     featureColor: string;
     isHighContrast: boolean;
@@ -100,6 +101,7 @@ interface VisualSettings {
     dependencyLineColor: string;
     // Level display settings
     showEpics: boolean;
+    showReleases: boolean;
     showFeatures: boolean;
     showMilestones: boolean;
     // Time scale settings
@@ -180,6 +182,7 @@ export class RoadmapVisual implements IVisual {
             showHierarchy: true,
             defaultExpanded: true,
             epicColor: DEFAULT_COLORS.epic,
+            releaseColor: DEFAULT_COLORS.release,
             milestoneColor: DEFAULT_COLORS.milestone,
             featureColor: DEFAULT_COLORS.feature,
             isHighContrast: false,
@@ -190,6 +193,7 @@ export class RoadmapVisual implements IVisual {
             showPredecessors: true,
             dependencyLineColor: DEFAULT_COLORS.dependencyLine,
             showEpics: true,
+            showReleases: true,
             showFeatures: true,
             showMilestones: true,
             timeScale: "monthly",
@@ -373,6 +377,7 @@ export class RoadmapVisual implements IVisual {
                 return colorObj?.solid?.color;
             };
             this.settings.epicColor = getColor(objects.workItemColors.epicColor) || this.settings.epicColor;
+            this.settings.releaseColor = getColor(objects.workItemColors.releaseColor) || this.settings.releaseColor;
             this.settings.milestoneColor = getColor(objects.workItemColors.milestoneColor) || this.settings.milestoneColor;
             this.settings.featureColor = getColor(objects.workItemColors.featureColor) || this.settings.featureColor;
             this.settings.isHighContrast = Boolean(objects.workItemColors.isHighContrast);
@@ -394,6 +399,7 @@ export class RoadmapVisual implements IVisual {
         // Visible Levels
         if (objects.levels) {
             this.settings.showEpics = objects.levels.showEpics !== false;
+            this.settings.showReleases = objects.levels.showReleases !== false;
             this.settings.showFeatures = objects.levels.showFeatures !== false;
             this.settings.showMilestones = objects.levels.showMilestones !== false;
         }
@@ -436,7 +442,7 @@ export class RoadmapVisual implements IVisual {
         const rows = this.buildRows();
         const totalHeight = rows.length > 0 ? rows[rows.length - 1].y + rows[rows.length - 1].height : 0;
 
-        // Header with ARIA landmark
+        // Header banner with ARIA landmark
         const header = this.container.append("div")
             .classed("header", true)
             .attr("role", "banner");
@@ -459,6 +465,46 @@ export class RoadmapVisual implements IVisual {
         const headerText = header.append("div").classed("header-text", true);
         headerText.append("div").classed("title", true).text(this.settings.title);
         headerText.append("div").classed("subtitle", true).text(this.settings.subtitle);
+
+        // Toolbar with action buttons
+        const toolbar = this.container.append("div")
+            .classed("toolbar", true);
+
+        const toolbarLeft = toolbar.append("div").classed("toolbar-left", true);
+
+        // Group by button
+        const groupByLabel = this.getGroupByLabel();
+        toolbarLeft.append("button")
+            .classed("toolbar-btn", true)
+            .html(`<span class="btn-icon">📊</span> Group by: ${groupByLabel}`);
+
+        // Colours button
+        toolbarLeft.append("button")
+            .classed("toolbar-btn", true)
+            .html(`<span class="btn-icon">🎨</span> Colours`);
+
+        // Settings button
+        toolbarLeft.append("button")
+            .classed("toolbar-btn", true)
+            .html(`<span class="btn-icon">⚙️</span> Settings`);
+
+        // Zoom controls on the right
+        const toolbarRight = toolbar.append("div").classed("toolbar-right", true);
+        const zoomControls = toolbarRight.append("div").classed("zoom-controls", true);
+
+        zoomControls.append("button")
+            .classed("zoom-btn", true)
+            .text("−")
+            .attr("aria-label", "Zoom out");
+
+        zoomControls.append("span")
+            .classed("zoom-level", true)
+            .text(`${Math.round(this.settings.zoomLevel * 100)}%`);
+
+        zoomControls.append("button")
+            .classed("zoom-btn", true)
+            .text("+")
+            .attr("aria-label", "Zoom in");
 
         // Main container with ARIA landmark - add pdf-mode class for print optimization
         const main = this.container.append("div")
@@ -638,6 +684,7 @@ export class RoadmapVisual implements IVisual {
         // Filter work items by level visibility
         const visibleItems = this.workItems.filter(w => {
             if (w.type === "Epic" && !this.settings.showEpics) return false;
+            if (w.type === "Release" && !this.settings.showReleases) return false;
             if (w.type === "Feature" && !this.settings.showFeatures) return false;
             if (w.type === "Milestone" && !this.settings.showMilestones) return false;
             return true;
@@ -724,6 +771,19 @@ export class RoadmapVisual implements IVisual {
             return parts[parts.length - 1] || String(value);
         }
         return String(value);
+    }
+
+    private getGroupByLabel(): string {
+        const labelMap: { [key: string]: string } = {
+            epic: "Epic",
+            areaPath: "Area",
+            iterationPath: "Iteration",
+            assignedTo: "Assigned To",
+            state: "State",
+            priority: "Priority",
+            tags: "Tags"
+        };
+        return labelMap[this.settings.groupBy] || "Epic";
     }
 
     private renderLeftRow(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, row: RowData): void {
@@ -1205,8 +1265,31 @@ export class RoadmapVisual implements IVisual {
         this.host.refreshHostData();
     }
 
+    private setTimeScale(scale: TimeScale): void {
+        if (this.settings.timeScale === scale) return;
+
+        // Update setting locally
+        this.settings.timeScale = scale;
+
+        // Persist the setting to Power BI
+        this.host.persistProperties({
+            merge: [{
+                objectName: "display",
+                selector: null,
+                properties: {
+                    viewScale: scale
+                }
+            }]
+        });
+    }
+
     private getColor(type: string): string {
-        return type === "Epic" ? this.settings.epicColor : type === "Milestone" ? this.settings.milestoneColor : this.settings.featureColor;
+        switch (type) {
+            case "Epic": return this.settings.epicColor;
+            case "Release": return this.settings.releaseColor;
+            case "Milestone": return this.settings.milestoneColor;
+            default: return this.settings.featureColor;
+        }
     }
 
     private sanitizeString(str: string): string {

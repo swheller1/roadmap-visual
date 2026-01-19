@@ -219,6 +219,11 @@
           "description": "Color for Epic work items",
           "type": { "fill": { "solid": { "color": true } } }
         },
+        "releaseColor": {
+          "displayName": "Release",
+          "description": "Color for Release work items",
+          "type": { "fill": { "solid": { "color": true } } }
+        },
         "featureColor": {
           "displayName": "Feature",
           "description": "Color for Feature work items",
@@ -295,6 +300,10 @@
       "properties": {
         "showEpics": {
           "displayName": "Show Epics",
+          "type": { "bool": true }
+        },
+        "showReleases": {
+          "displayName": "Show Releases",
           "type": { "bool": true }
         },
         "showFeatures": {

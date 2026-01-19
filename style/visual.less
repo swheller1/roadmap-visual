@@ -3,6 +3,7 @@
 @bg: #F8FAFC;
 @card: #FFFFFF;
 @header: #F1F5F9;
+@header-banner: #0d7377;
 @swim: #E2E8F0;
 @border: #E2E8F0;
 @border-light: #F1F5F9;
@@ -24,11 +25,10 @@
     position: relative;
 }
 
-// Header
+// Header banner (teal background)
 .header {
-    padding: 12px 16px;
-    background: @card;
-    border-bottom: 1px solid @border;
+    padding: 16px 20px;
+    background: @header-banner;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -45,15 +45,119 @@
     }
 
     .title {
-        font-size: 16px;
+        font-size: 20px;
         font-weight: 600;
-        color: @text;
+        color: #ffffff;
     }
 
     .subtitle {
-        font-size: 11px;
-        color: @text-muted;
-        margin-top: 2px;
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.8);
+        margin-top: 4px;
+    }
+}
+
+// Toolbar with action buttons
+.toolbar {
+    padding: 10px 16px;
+    background: @card;
+    border-bottom: 1px solid @border;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .toolbar-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1;
+    }
+
+    .toolbar-right {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+}
+
+// Toolbar buttons
+.toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: @text-secondary;
+    background: @card;
+    border: 1px solid @border;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &:hover {
+        background: @bg;
+        border-color: @text-muted;
+    }
+
+    &:active {
+        background: @header;
+    }
+
+    .btn-icon {
+        font-size: 14px;
+        opacity: 0.8;
+    }
+}
+
+// Zoom controls
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    border: 1px solid @border;
+    border-radius: 6px;
+    overflow: hidden;
+
+    .zoom-btn {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 600;
+        color: @text-secondary;
+        background: @card;
+        border: none;
+        cursor: pointer;
+        transition: background 0.15s;
+
+        &:hover {
+            background: @bg;
+        }
+
+        &:active {
+            background: @header;
+        }
+
+        &:disabled {
+            color: @text-muted;
+            cursor: not-allowed;
+        }
+    }
+
+    .zoom-level {
+        padding: 0 8px;
+        font-size: 12px;
+        font-weight: 500;
+        color: @text-secondary;
+        background: @bg;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        min-width: 48px;
+        justify-content: center;
     }
 }
 
@@ -736,13 +840,63 @@
         }
     }
 
-    .export-btn {
-        background: @hc-accent;
-        color: @hc-bg;
-        border: 2px solid @hc-text;
+    .toolbar {
+        background: @hc-card;
+        border-bottom-color: @hc-border;
+    }
+
+    .toolbar-btn {
+        background: @hc-card;
+        color: @hc-text;
+        border-color: @hc-border;
 
         &:hover {
-            background: lighten(@hc-accent, 10%);
+            background: @hc-header;
+            border-color: @hc-text;
+        }
+    }
+
+    .zoom-controls {
+        border-color: @hc-border;
+
+        .zoom-btn {
+            background: @hc-card;
+            color: @hc-text;
+
+            &:hover {
+                background: @hc-header;
+            }
+        }
+
+        .zoom-level {
+            background: @hc-header;
+            color: @hc-text;
+        }
+    }
+
+    .view-toggle {
+        background: @hc-header;
+        border: 1px solid @hc-border;
+    }
+
+    .view-toggle-btn {
+        color: @hc-text;
+        border: 1px solid transparent;
+
+        &:hover {
+            background: lighten(@hc-header, 10%);
+            color: @hc-text-secondary;
+        }
+
+        &:focus, &:focus-visible {
+            outline: 2px solid @hc-accent;
+            outline-offset: 1px;
+        }
+
+        &.active {
+            background: @hc-accent;
+            color: @hc-bg;
+            border-color: @hc-text;
         }
     }
 
