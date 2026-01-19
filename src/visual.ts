@@ -90,6 +90,7 @@ interface VisualSettings {
     defaultExpanded: boolean;
     // Colors
     epicColor: string;
+    releaseColor: string;
     milestoneColor: string;
     featureColor: string;
     isHighContrast: boolean;
@@ -103,6 +104,7 @@ interface VisualSettings {
     dependencyLineColor: string;
     // Level display settings
     showEpics: boolean;
+    showReleases: boolean;
     showFeatures: boolean;
     showMilestones: boolean;
     // Time scale settings
@@ -185,6 +187,7 @@ export class RoadmapVisual implements IVisual {
             showHierarchy: true,
             defaultExpanded: true,
             epicColor: DEFAULT_COLORS.epic,
+            releaseColor: DEFAULT_COLORS.release,
             milestoneColor: DEFAULT_COLORS.milestone,
             featureColor: DEFAULT_COLORS.feature,
             isHighContrast: false,
@@ -195,6 +198,7 @@ export class RoadmapVisual implements IVisual {
             showPredecessors: true,
             dependencyLineColor: DEFAULT_COLORS.dependencyLine,
             showEpics: true,
+            showReleases: true,
             showFeatures: true,
             showMilestones: true,
             timeScale: "monthly",
@@ -379,6 +383,7 @@ export class RoadmapVisual implements IVisual {
                 return colorObj?.solid?.color;
             };
             this.settings.epicColor = getColor(objects.workItemColors.epicColor) || this.settings.epicColor;
+            this.settings.releaseColor = getColor(objects.workItemColors.releaseColor) || this.settings.releaseColor;
             this.settings.milestoneColor = getColor(objects.workItemColors.milestoneColor) || this.settings.milestoneColor;
             this.settings.featureColor = getColor(objects.workItemColors.featureColor) || this.settings.featureColor;
             this.settings.isHighContrast = Boolean(objects.workItemColors.isHighContrast);
@@ -400,6 +405,7 @@ export class RoadmapVisual implements IVisual {
         // Visible Levels
         if (objects.levels) {
             this.settings.showEpics = objects.levels.showEpics !== false;
+            this.settings.showReleases = objects.levels.showReleases !== false;
             this.settings.showFeatures = objects.levels.showFeatures !== false;
             this.settings.showMilestones = objects.levels.showMilestones !== false;
         }
@@ -654,6 +660,7 @@ export class RoadmapVisual implements IVisual {
         // Filter work items by level visibility
         const visibleItems = this.workItems.filter(w => {
             if (w.type === "Epic" && !this.settings.showEpics) return false;
+            if (w.type === "Release" && !this.settings.showReleases) return false;
             if (w.type === "Feature" && !this.settings.showFeatures) return false;
             if (w.type === "Milestone" && !this.settings.showMilestones) return false;
             return true;
@@ -1222,7 +1229,12 @@ export class RoadmapVisual implements IVisual {
     }
 
     private getColor(type: string): string {
-        return type === "Epic" ? this.settings.epicColor : type === "Milestone" ? this.settings.milestoneColor : this.settings.featureColor;
+        switch (type) {
+            case "Epic": return this.settings.epicColor;
+            case "Release": return this.settings.releaseColor;
+            case "Milestone": return this.settings.milestoneColor;
+            default: return this.settings.featureColor;
+        }
     }
 
     private sanitizeString(str: string): string {
