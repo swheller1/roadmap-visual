@@ -452,7 +452,7 @@ export class RoadmapVisual implements IVisual {
         const rows = this.buildRows();
         const totalHeight = rows.length > 0 ? rows[rows.length - 1].y + rows[rows.length - 1].height : 0;
 
-        // Header with ARIA landmark
+        // Header banner with ARIA landmark
         const header = this.container.append("div")
             .classed("header", true)
             .attr("role", "banner");
@@ -476,11 +476,51 @@ export class RoadmapVisual implements IVisual {
         headerText.append("div").classed("title", true).text(this.settings.title);
         headerText.append("div").classed("subtitle", true).text(this.settings.subtitle);
 
-        // Export button
-        header.append("button")
-            .classed("export-btn", true)
-            .text("Export PDF")
+        // Toolbar with action buttons
+        const toolbar = this.container.append("div")
+            .classed("toolbar", true);
+
+        const toolbarLeft = toolbar.append("div").classed("toolbar-left", true);
+
+        // Group by button
+        const groupByLabel = this.getGroupByLabel();
+        toolbarLeft.append("button")
+            .classed("toolbar-btn", true)
+            .html(`<span class="btn-icon">📊</span> Group by: ${groupByLabel}`);
+
+        // Colours button
+        toolbarLeft.append("button")
+            .classed("toolbar-btn", true)
+            .html(`<span class="btn-icon">🎨</span> Colours`);
+
+        // Settings button
+        toolbarLeft.append("button")
+            .classed("toolbar-btn", true)
+            .html(`<span class="btn-icon">⚙️</span> Settings`);
+
+        // Export PDF button
+        toolbarLeft.append("button")
+            .classed("toolbar-btn", true)
+            .html(`<span class="btn-icon">📄</span> Export PDF`)
             .on("click", () => this.exportToPdf());
+
+        // Zoom controls on the right
+        const toolbarRight = toolbar.append("div").classed("toolbar-right", true);
+        const zoomControls = toolbarRight.append("div").classed("zoom-controls", true);
+
+        zoomControls.append("button")
+            .classed("zoom-btn", true)
+            .text("−")
+            .attr("aria-label", "Zoom out");
+
+        zoomControls.append("span")
+            .classed("zoom-level", true)
+            .text(`${Math.round(this.settings.zoomLevel * 100)}%`);
+
+        zoomControls.append("button")
+            .classed("zoom-btn", true)
+            .text("+")
+            .attr("aria-label", "Zoom in");
 
         // Main container with ARIA landmark - add pdf-mode class for export optimization
         const main = this.container.append("div")
@@ -747,6 +787,19 @@ export class RoadmapVisual implements IVisual {
             return parts[parts.length - 1] || String(value);
         }
         return String(value);
+    }
+
+    private getGroupByLabel(): string {
+        const labelMap: { [key: string]: string } = {
+            epic: "Epic",
+            areaPath: "Area",
+            iterationPath: "Iteration",
+            assignedTo: "Assigned To",
+            state: "State",
+            priority: "Priority",
+            tags: "Tags"
+        };
+        return labelMap[this.settings.groupBy] || "Epic";
     }
 
     private renderLeftRow(container: d3.Selection<HTMLDivElement, unknown, null, undefined>, row: RowData): void {
