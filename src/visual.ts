@@ -1281,6 +1281,24 @@ export class RoadmapVisual implements IVisual {
         this.host.refreshHostData();
     }
 
+    private setTimeScale(scale: TimeScale): void {
+        if (this.settings.timeScale === scale) return;
+
+        // Update setting locally
+        this.settings.timeScale = scale;
+
+        // Persist the setting to Power BI
+        this.host.persistProperties({
+            merge: [{
+                objectName: "display",
+                selector: null,
+                properties: {
+                    viewScale: scale
+                }
+            }]
+        });
+    }
+
     private getColor(type: string): string {
         switch (type) {
             case "Epic": return this.settings.epicColor;
