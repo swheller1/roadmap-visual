@@ -77,6 +77,18 @@
       "displayName": "Tags",
       "kind": "Grouping",
       "description": "Work item tags"
+    },
+    {
+      "name": "milestoneTitle",
+      "displayName": "Milestone Title",
+      "kind": "Grouping",
+      "description": "Standalone milestone title (separate from work items)"
+    },
+    {
+      "name": "milestoneTargetDate",
+      "displayName": "Milestone Target Date",
+      "kind": "Grouping",
+      "description": "Standalone milestone target date (separate from work items)"
     }
   ],
   "dataViewMappings": [
@@ -95,7 +107,9 @@
           "iterationPath": { "max": 1 },
           "assignedTo": { "max": 1 },
           "priority": { "max": 1 },
-          "tags": { "max": 1 }
+          "tags": { "max": 1 },
+          "milestoneTitle": { "max": 1 },
+          "milestoneTargetDate": { "max": 1 }
         }
       ],
       "categorical": {
@@ -113,7 +127,9 @@
             { "for": { "in": "iterationPath" } },
             { "for": { "in": "assignedTo" } },
             { "for": { "in": "priority" } },
-            { "for": { "in": "tags" } }
+            { "for": { "in": "tags" } },
+            { "for": { "in": "milestoneTitle" } },
+            { "for": { "in": "milestoneTargetDate" } }
           ],
           "dataReductionAlgorithm": {
             "top": { "count": 10000 }

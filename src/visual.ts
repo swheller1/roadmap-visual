@@ -30,7 +30,7 @@ import "./../style/visual.less";
 
 // Import extracted modules
 import { DateService } from "./services/dateService";
-import { CoordinateEngine, RowBounds } from "./services/coordinateEngine";
+import { CoordinateEngine } from "./services/coordinateEngine";
 import {
     VISUAL_VERSION,
     WORK_ITEM_TYPES,
@@ -299,40 +299,105 @@ export class RoadmapVisual implements IVisual {
         const prioCol = getColumn("priority");
         const tagsCol = getColumn("tags");
 
-        if (!idCol || !titleCol || !typeCol) {
+        // Standalone milestone columns
+        const milestoneTitleCol = getColumn("milestoneTitle");
+        const milestoneTargetDateCol = getColumn("milestoneTargetDate");
+
+        // Check if we have work item data OR standalone milestone data
+        const hasWorkItemData = idCol && titleCol && typeCol;
+        const hasStandaloneMilestones = milestoneTitleCol || milestoneTargetDateCol;
+
+        if (!hasWorkItemData && !hasStandaloneMilestones) {
             return;
         }
 
-        const rowCount = idCol.values.length;
+        // Determine row count from available columns
+        const rowCount = idCol?.values.length || milestoneTitleCol?.values.length || milestoneTargetDateCol?.values.length || 0;
+
+        // Track standalone milestone IDs to avoid duplicates (when title and date are from same rows)
+        const standaloneMilestoneIds = new Set<string>();
 
         for (let i = 0; i < rowCount; i++) {
-            const workItemId = Number(idCol.values[i]) || 0;
-            const type = this.sanitizeString(String(typeCol.values[i] || "Feature"));
-            const parentVal = parentCol?.values[i];
-            const predecessorVal = predecessorCol?.values[i];
+            // Parse regular work items if work item data is available
+            if (hasWorkItemData && idCol && titleCol && typeCol) {
+                const workItemId = Number(idCol.values[i]) || 0;
+                const type = this.sanitizeString(String(typeCol.values[i] || "Feature"));
+                const parentVal = parentCol?.values[i];
+                const predecessorVal = predecessorCol?.values[i];
 
-            // Create selection ID for interactivity
-            const selectionId = this.host.createSelectionIdBuilder()
-                .withCategory(idCol, i)
-                .createSelectionId();
+                // Only add if we have a valid work item ID
+                if (workItemId > 0) {
+                    // Create selection ID for interactivity
+                    const selectionId = this.host.createSelectionIdBuilder()
+                        .withCategory(idCol, i)
+                        .createSelectionId();
 
-            this.workItems.push({
-                id: `${type.charAt(0)}-${workItemId}`,
-                workItemId,
-                title: this.sanitizeString(String(titleCol.values[i] || "")),
-                type,
-                state: this.sanitizeString(String(stateCol?.values[i] || "New")),
-                startDate: DateService.parseDate(startCol?.values[i] as string | number | Date | null | undefined),
-                targetDate: DateService.parseDate(targetCol?.values[i] as string | number | Date | null | undefined),
-                parentId: parentVal ? `E-${parentVal}` : null,
-                predecessorId: predecessorVal ? String(predecessorVal) : null,
-                areaPath: this.sanitizeString(String(areaCol?.values[i] || "")),
-                iterationPath: this.sanitizeString(String(iterCol?.values[i] || "")),
-                assignedTo: this.sanitizeString(String(assignCol?.values[i] || "")),
-                priority: Number(prioCol?.values[i]) || 0,
-                tags: this.sanitizeString(String(tagsCol?.values[i] || "")),
-                selectionId
-            });
+                    this.workItems.push({
+                        id: `${type.charAt(0)}-${workItemId}`,
+                        workItemId,
+                        title: this.sanitizeString(String(titleCol.values[i] || "")),
+                        type,
+                        state: this.sanitizeString(String(stateCol?.values[i] || "New")),
+                        startDate: DateService.parseDate(startCol?.values[i] as string | number | Date | null | undefined),
+                        targetDate: DateService.parseDate(targetCol?.values[i] as string | number | Date | null | undefined),
+                        parentId: parentVal ? `E-${parentVal}` : null,
+                        predecessorId: predecessorVal ? String(predecessorVal) : null,
+                        areaPath: this.sanitizeString(String(areaCol?.values[i] || "")),
+                        iterationPath: this.sanitizeString(String(iterCol?.values[i] || "")),
+                        assignedTo: this.sanitizeString(String(assignCol?.values[i] || "")),
+                        priority: Number(prioCol?.values[i]) || 0,
+                        tags: this.sanitizeString(String(tagsCol?.values[i] || "")),
+                        selectionId
+                    });
+                }
+            }
+
+            // Parse standalone milestones if milestone data is available
+            if (hasStandaloneMilestones) {
+                const milestoneTitle = milestoneTitleCol?.values[i];
+                const milestoneTargetDate = milestoneTargetDateCol?.values[i];
+
+                // Only add if we have at least a title or a target date
+                if (milestoneTitle || milestoneTargetDate) {
+                    const titleStr = this.sanitizeString(String(milestoneTitle || ""));
+                    const targetDate = DateService.parseDate(milestoneTargetDate as string | number | Date | null | undefined);
+
+                    // Create a unique ID for the standalone milestone based on title and date
+                    const dateKey = targetDate ? targetDate.toISOString().split("T")[0] : "nodate";
+                    const milestoneId = `SM-${i}-${dateKey}`;
+
+                    // Avoid adding duplicate milestones (e.g., when same row has both title and date)
+                    if (!standaloneMilestoneIds.has(milestoneId) && (titleStr || targetDate)) {
+                        standaloneMilestoneIds.add(milestoneId);
+
+                        // Create selection ID for interactivity (use the first available column)
+                        const selectionCol = milestoneTitleCol || milestoneTargetDateCol;
+                        const selectionId = selectionCol
+                            ? this.host.createSelectionIdBuilder()
+                                .withCategory(selectionCol, i)
+                                .createSelectionId()
+                            : null;
+
+                        this.workItems.push({
+                            id: milestoneId,
+                            workItemId: -(i + 1), // Negative ID to distinguish from regular work items
+                            title: titleStr || (targetDate ? DateService.formatAU(targetDate, { day: "numeric", month: "short", year: "numeric" }) : "Milestone"),
+                            type: "Milestone",
+                            state: "Active",
+                            startDate: null,
+                            targetDate: targetDate,
+                            parentId: null,
+                            predecessorId: null,
+                            areaPath: "",
+                            iterationPath: "",
+                            assignedTo: "",
+                            priority: 0,
+                            tags: "",
+                            selectionId
+                        });
+                    }
+                }
+            }
         }
     }
 
@@ -725,6 +790,19 @@ export class RoadmapVisual implements IVisual {
                     rows.push({ type: item.type, data: item, y, height: h, level: 0 });
                     y += h;
                 });
+            } else {
+                // Show standalone milestones (milestones without a parent) at top level
+                // These are typically added via the separate Milestone Title/Target Date fields
+                const standaloneMilestones = nonEpicItems.filter(w =>
+                    w.type === "Milestone" && !w.parentId
+                );
+                if (standaloneMilestones.length > 0) {
+                    standaloneMilestones.forEach(m => {
+                        const mh = this.getRowHeight("Milestone");
+                        rows.push({ type: "Milestone", data: m, y, height: mh, level: 0 });
+                        y += mh;
+                    });
+                }
             }
         } else {
             // Group by another field (Area Path, Iteration, Assigned To, etc.)
@@ -820,7 +898,13 @@ export class RoadmapVisual implements IVisual {
                     .attr("tabindex", "0");
                 rowEl.append("span").classed("row-chevron", true).attr("aria-hidden", "true").text(row.collapsed ? "▶" : "▼");
             }
-            rowEl.append("span").classed("row-id", true).text(String(row.data.workItemId));
+            // For standalone milestones (negative ID), show a diamond icon instead of ID
+            const isStandaloneMilestone = row.data.workItemId < 0;
+            if (isStandaloneMilestone) {
+                rowEl.append("span").classed("row-id", true).classed("row-id-milestone", true).text("◆");
+            } else {
+                rowEl.append("span").classed("row-id", true).text(String(row.data.workItemId));
+            }
             rowEl.append("span").classed("row-title", true).text(row.data.title);
             if (row.childCount !== undefined && row.childCount > 0) {
                 rowEl.append("span").classed("row-count", true).attr("aria-label", `${row.childCount} child items`).text(String(row.childCount));
@@ -880,7 +964,12 @@ export class RoadmapVisual implements IVisual {
 
             // Format date for accessibility
             const targetDateStr = DateService.formatAU(item.targetDate, { day: "numeric", month: "long", year: "numeric" });
-            const ariaLabel = `Milestone ${item.workItemId}: ${item.title}, Target date ${targetDateStr}`;
+            // Handle standalone milestones (negative ID) vs regular work item milestones
+            const isStandalone = item.workItemId < 0;
+            const displayId = isStandalone ? "" : `${item.workItemId}: `;
+            const ariaLabel = isStandalone
+                ? `Milestone: ${item.title}, Target date ${targetDateStr}`
+                : `Milestone ${item.workItemId}: ${item.title}, Target date ${targetDateStr}`;
 
             const el = milestoneContainer.append("div")
                 .classed("milestone", true)
@@ -892,12 +981,13 @@ export class RoadmapVisual implements IVisual {
                 .style("height", `${size}px`)
                 .style("background", color)
                 .style("flex-shrink", "0")
-                .attr("title", `${item.workItemId}: ${item.title}`);
+                .attr("title", `${displayId}${item.title}`);
             this.addBarInteractivity(el, item);
 
             // Add label if not 'none'
             if (this.settings.milestoneLabelPosition !== "none") {
-                let labelText = `${item.workItemId}: ${item.title}`;
+                // For standalone milestones, don't show the ID prefix
+                let labelText = isStandalone ? item.title : `${item.workItemId}: ${item.title}`;
                 if (this.settings.milestoneShowDate) {
                     const dateStr = DateService.formatAU(item.targetDate, { day: "numeric", month: "short" });
                     labelText = `${dateStr} - ${labelText}`;
@@ -1017,7 +1107,7 @@ export class RoadmapVisual implements IVisual {
 
                 // Find predecessor using indexes (O(1) instead of O(n))
                 const predId = Number(item.predecessorId);
-                let predecessorRow = workItemIdIndex.get(predId) ||
+                const predecessorRow = workItemIdIndex.get(predId) ||
                     rowIndex.get(item.predecessorId) ||
                     rowIndex.get(`E-${item.predecessorId}`) ||
                     rowIndex.get(`F-${item.predecessorId}`) ||
@@ -1257,6 +1347,8 @@ export class RoadmapVisual implements IVisual {
         const help = empty.append("div").classed("empty-help", true);
         help.append("span").text("Required: ");
         help.append("strong").text("Work Item ID, Title, Type");
+        help.append("span").text(" or ");
+        help.append("strong").text("Milestone Title/Target Date");
     }
 
     private toggleCollapse(key: string): void {
