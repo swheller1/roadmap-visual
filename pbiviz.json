@@ -4,7 +4,7 @@
     "displayName": "Roadmap Visual",
     "guid": "roadmapVisual1234567890ABCDEF",
     "visualClassName": "RoadmapVisual",
-    "version": "1.0.0.0",
+    "version": "2.0.0.0",
     "description": "Executive roadmap Gantt chart displaying Epics, Features, and Milestones with swimlane grouping, dependency lines, and interactive navigation. Designed for Azure DevOps work item data.",
     "supportUrl": "https://github.com/swheller1/roadmap-visual",
     "gitHubUrl": "https://github.com/swheller1/roadmap-visual"
