@@ -1,7 +1,7 @@
 {
   "name": "roadmapVisual",
   "displayName": "Roadmap Visual",
-  "version": "1.0.0",
+  "version": "2.0.1",
   "description": "Executive roadmap Gantt chart with swimlanes for Azure DevOps work items",
   "author": {
     "name": "Your Organisation",
