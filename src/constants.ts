@@ -172,27 +172,5 @@ export const DEFAULT_COLORS = {
     dependencyLine: "#94A3B8",
 } as const;
 
-// PDF export settings
-export const PDF_EXPORT = {
-    /** Page margins in mm */
-    MARGIN_MM: 15,
-    /** Header/footer height in mm */
-    HEADER_FOOTER_HEIGHT_MM: 12,
-    /** Logo height in mm */
-    LOGO_HEIGHT_MM: 12,
-    /** Logo width in mm */
-    LOGO_WIDTH_MM: 40,
-    /** Security classification font size */
-    SECURITY_FONT_SIZE: 14,
-    /** Footer font size */
-    FOOTER_FONT_SIZE: 8,
-    /** Security marking color (red) RGB */
-    SECURITY_COLOR: { r: 220, g: 38, b: 38 },
-    /** Footer text color RGB */
-    FOOTER_COLOR: { r: 100, g: 100, b: 100 },
-    /** Canvas capture scale factor */
-    CANVAS_SCALE: 2,
-} as const;
-
 // Milliseconds per day (for date calculations - prefer DateService methods)
 export const MS_PER_DAY = 86400000;

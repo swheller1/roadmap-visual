@@ -342,31 +342,12 @@
       }
     },
     "export": {
-      "displayName": "Export",
+      "displayName": "Print",
       "properties": {
         "pdfMode": {
-          "displayName": "PDF-Friendly Mode",
-          "description": "Expand all items and optimize for PDF export",
+          "displayName": "Print-Friendly Mode",
+          "description": "Expand all items and optimize layout for browser print-to-PDF (Ctrl+P)",
           "type": { "bool": true }
-        }
-      }
-    },
-    "pdfExport": {
-      "displayName": "PDF Export",
-      "properties": {
-        "securityClassification": {
-          "displayName": "Security Classification",
-          "description": "Security classification text displayed at top and bottom of PDF (e.g., OFFICIAL, PROTECTED, SECRET)",
-          "type": { "text": true }
-        },
-        "showLogo": {
-          "displayName": "Show Logo",
-          "type": { "bool": true }
-        },
-        "logoUrl": {
-          "displayName": "Logo URL",
-          "description": "URL or base64 data URI of the logo image",
-          "type": { "text": true }
         }
       }
     }

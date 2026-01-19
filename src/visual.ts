@@ -25,8 +25,6 @@ import ISelectionManager = powerbi.extensibility.ISelectionManager;
 import ISelectionId = powerbi.visuals.ISelectionId;
 
 import * as d3 from "d3";
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
 
 import "./../style/visual.less";
 
@@ -49,7 +47,6 @@ import {
     OCCLUSION,
     DEPENDENCY_LINES,
     DEFAULT_COLORS,
-    PDF_EXPORT,
     TimeScale,
     RowDensity,
     MilestoneLabelPosition,
@@ -110,10 +107,8 @@ interface VisualSettings {
     // Time scale settings
     timeScale: "daily" | "weekly" | "monthly" | "annual" | "multiYear";
     zoomLevel: number;
-    // Export settings
+    // Print-friendly mode (expands all items for browser print-to-PDF)
     pdfMode: boolean;
-    // PDF Export settings (PSPF security classification)
-    securityClassification: string;
 }
 
 interface RowData {
@@ -203,8 +198,7 @@ export class RoadmapVisual implements IVisual {
             showMilestones: true,
             timeScale: "monthly",
             zoomLevel: 1,
-            pdfMode: false,
-            securityClassification: ""
+            pdfMode: false
         };
     }
 
@@ -417,13 +411,9 @@ export class RoadmapVisual implements IVisual {
             const lineColor = (objects.dependencies.lineColor as { solid?: { color?: string } })?.solid?.color;
             if (lineColor) this.settings.dependencyLineColor = lineColor;
         }
-        // Export settings
+        // Export settings (print-friendly mode)
         if (objects.export) {
             this.settings.pdfMode = Boolean(objects.export.pdfMode);
-        }
-        // PDF Export settings (PSPF security classification)
-        if (objects.pdfExport) {
-            this.settings.securityClassification = this.sanitizeString(String(objects.pdfExport.securityClassification || ""));
         }
     }
 
@@ -498,12 +488,6 @@ export class RoadmapVisual implements IVisual {
             .classed("toolbar-btn", true)
             .html(`<span class="btn-icon">⚙️</span> Settings`);
 
-        // Export PDF button
-        toolbarLeft.append("button")
-            .classed("toolbar-btn", true)
-            .html(`<span class="btn-icon">📄</span> Export PDF`)
-            .on("click", () => this.exportToPdf());
-
         // Zoom controls on the right
         const toolbarRight = toolbar.append("div").classed("toolbar-right", true);
         const zoomControls = toolbarRight.append("div").classed("zoom-controls", true);
@@ -522,7 +506,7 @@ export class RoadmapVisual implements IVisual {
             .text("+")
             .attr("aria-label", "Zoom in");
 
-        // Main container with ARIA landmark - add pdf-mode class for export optimization
+        // Main container with ARIA landmark - add pdf-mode class for print optimization
         const main = this.container.append("div")
             .classed("main", true)
             .classed("pdf-mode", this.settings.pdfMode)
@@ -1332,103 +1316,6 @@ export class RoadmapVisual implements IVisual {
 
     // Note: Date utilities (parseDate, addDays, daysBetween) have been
     // extracted to DateService for better testability and DST handling.
-
-    /**
-     * Export the roadmap to PDF with security classification markings
-     * Per PSPF guidelines: centered at top and bottom, red, bold, capitals
-     */
-    private async exportToPdf(): Promise<void> {
-        const containerNode = this.container.node();
-        if (!containerNode) return;
-
-        try {
-            // Capture the visual content
-            const canvas = await html2canvas(containerNode, {
-                scale: PDF_EXPORT.CANVAS_SCALE,
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: "#FFFFFF"
-            });
-
-            // Create PDF in landscape A4
-            const pdf = new jsPDF({
-                orientation: "landscape",
-                unit: "mm",
-                format: "a4"
-            });
-
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            const margin = PDF_EXPORT.MARGIN_MM;
-            const headerFooterHeight = PDF_EXPORT.HEADER_FOOTER_HEIGHT_MM;
-            const securityClassification = this.settings.securityClassification.toUpperCase();
-
-            // Calculate content area
-            const contentStartY = margin + (securityClassification ? headerFooterHeight : 0) + (this.settings.showLogo && this.settings.logoUrl ? 15 : 0);
-            const contentEndY = pageHeight - margin - (securityClassification ? headerFooterHeight : 0);
-            const contentHeight = contentEndY - contentStartY;
-            const contentWidth = pageWidth - (margin * 2);
-
-            // Draw security classification at TOP (PSPF requirement: center top, red, bold, capitals)
-            if (securityClassification) {
-                pdf.setFont("helvetica", "bold");
-                pdf.setFontSize(PDF_EXPORT.SECURITY_FONT_SIZE);
-                pdf.setTextColor(PDF_EXPORT.SECURITY_COLOR.r, PDF_EXPORT.SECURITY_COLOR.g, PDF_EXPORT.SECURITY_COLOR.b);
-                pdf.text(securityClassification, pageWidth / 2, margin + 5, { align: "center" });
-            }
-
-            // Draw logo if enabled
-            if (this.settings.showLogo && this.settings.logoUrl) {
-                try {
-                    const logoY = margin + (securityClassification ? headerFooterHeight : 0);
-                    pdf.addImage(this.settings.logoUrl, "PNG", (pageWidth - PDF_EXPORT.LOGO_WIDTH_MM) / 2, logoY, PDF_EXPORT.LOGO_WIDTH_MM, PDF_EXPORT.LOGO_HEIGHT_MM);
-                } catch (logoError) {
-                    console.warn("Failed to add logo to PDF:", logoError);
-                }
-            }
-
-            // Add the captured content
-            const imgData = canvas.toDataURL("image/png");
-            const imgWidth = canvas.width;
-            const imgHeight = canvas.height;
-            const ratio = Math.min(contentWidth / imgWidth, contentHeight / imgHeight);
-            const scaledWidth = imgWidth * ratio;
-            const scaledHeight = imgHeight * ratio;
-            const imgX = margin + (contentWidth - scaledWidth) / 2;
-            const imgY = contentStartY + (contentHeight - scaledHeight) / 2;
-
-            pdf.addImage(imgData, "PNG", imgX, imgY, scaledWidth, scaledHeight);
-
-            // Draw security classification at BOTTOM (PSPF requirement: center bottom, red, bold, capitals)
-            if (securityClassification) {
-                pdf.setFont("helvetica", "bold");
-                pdf.setFontSize(PDF_EXPORT.SECURITY_FONT_SIZE);
-                pdf.setTextColor(PDF_EXPORT.SECURITY_COLOR.r, PDF_EXPORT.SECURITY_COLOR.g, PDF_EXPORT.SECURITY_COLOR.b);
-                pdf.text(securityClassification, pageWidth / 2, pageHeight - margin, { align: "center" });
-            }
-
-            // Add footer with generation date
-            pdf.setFont("helvetica", "normal");
-            pdf.setFontSize(PDF_EXPORT.FOOTER_FONT_SIZE);
-            pdf.setTextColor(PDF_EXPORT.FOOTER_COLOR.r, PDF_EXPORT.FOOTER_COLOR.g, PDF_EXPORT.FOOTER_COLOR.b);
-            const dateStr = DateService.formatAU(new Date(), {
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit"
-            });
-            pdf.text(`Generated: ${dateStr}`, margin, pageHeight - margin + 5);
-            pdf.text("Page 1 of 1", pageWidth - margin, pageHeight - margin + 5, { align: "right" });
-
-            // Save the PDF
-            const filename = `${this.settings.title.replace(/[^a-zA-Z0-9]/g, "_")}_Roadmap.pdf`;
-            pdf.save(filename);
-
-        } catch (error) {
-            console.error("PDF export failed:", error);
-        }
-    }
 
     public destroy(): void {
         // Remove window event listeners to prevent memory leak
