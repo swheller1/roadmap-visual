@@ -4,7 +4,7 @@
 
 | Document Version | Date | Audience |
 |------------------|------|----------|
-| 2.0 | January 2026 | Australian Public Sector Power BI Creators |
+| 1.0.0.0 | January 2026 | Australian Public Sector Power BI Creators |
 
 **AI Disclosure:** Artificial Intelligence was used during the creation of this documentation and the associated codebase.
 
@@ -203,11 +203,10 @@ The visual requires specific data fields to render correctly. Map your data sour
 | Action | How To |
 |--------|--------|
 | Pan timeline | Click and drag on the timeline area |
-| Zoom in/out | Ctrl + scroll wheel, or use zoom buttons |
+| Zoom in/out | Use time scale selector (Daily, Weekly, Monthly, Annual) |
 | Expand/collapse Epic | Click on an Epic row to show/hide child items |
 | Expand/collapse swimlane | Click on a swimlane header |
-| Edit title/subtitle | Click on the title or subtitle text to edit inline |
-| Print/Export PDF | Use browser print dialog (Ctrl+P) |
+| Export PDF | Use the Export PDF option in the visual menu |
 
 ### 5.3 Zoom Levels
 
@@ -222,13 +221,13 @@ The visual uses discrete zoom levels for optimal navigation:
 
 ### 5.4 Settings Configuration
 
-Access settings via the Settings button (gear icon) in the visual toolbar. Available options include:
+Access settings via the **Format** pane in Power BI when the visual is selected. Available options include:
 
 - **Swimlane grouping:** Area Path, Iteration Path, Assigned To, State, Priority, Tags
 - **Colour customisation:** Epic, Feature, and Milestone colours
-- **Bar display:** Choose which fields appear on timeline bars
-- **Row and bar heights:** Adjust sizing for dense or spacious layouts
+- **Row density:** Compact, Normal, or Comfortable layouts
 - **Dependencies:** Toggle dependency lines on/off
+- **Milestone labels:** Position labels left, right, or hide them
 
 ---
 
@@ -310,8 +309,7 @@ https://analytics.dev.azure.com/{org}/{project}/_odata/v4.0-preview/WorkItems?
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 2.0.0 | 17 January 2026 | Microsoft certification compliance, security hardening, architecture documentation, OData field reference |
-| 1.0.0 | 17 January 2026 | Initial release with core roadmap functionality |
+| 1.0.0.0 | January 2026 | Initial release with core roadmap functionality, Microsoft certification compliance, security hardening |
 
 ---
 

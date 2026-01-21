@@ -32,7 +32,7 @@ import "./../style/visual.less";
 
 // Import extracted modules
 import { DateService } from "./services/dateService";
-import { CoordinateEngine, RowBounds } from "./services/coordinateEngine";
+import { CoordinateEngine } from "./services/coordinateEngine";
 import {
     VISUAL_VERSION,
     WORK_ITEM_TYPES,
@@ -143,13 +143,8 @@ export class RoadmapVisual implements IVisual {
     // Coordinate engine for timeline calculations
     private coordinateEngine: CoordinateEngine | null = null;
 
-    // Occlusion culling state
+    // Scroll position for occlusion culling
     private currentScrollTop: number = 0;
-    private currentScrollLeft: number = 0;
-    private viewportHeight: number = 0;
-    private viewportWidth: number = 0;
-    private allRows: RowData[] = [];
-    private renderedRowIds: Set<string> = new Set();
 
     constructor(options: VisualConstructorOptions) {
         this.host = options.host;
@@ -258,10 +253,6 @@ export class RoadmapVisual implements IVisual {
                 zoomLevel: this.settings.zoomLevel as 0.5 | 1 | 2 | 4,
                 leftPanelWidth: LAYOUT.LEFT_PANEL_WIDTH,
             });
-
-            // Store viewport dimensions for occlusion culling
-            this.viewportHeight = options.viewport.height;
-            this.viewportWidth = options.viewport.width;
 
             // Render visual
             this.render(options.viewport.width, options.viewport.height, this.viewEnd);
@@ -508,17 +499,13 @@ export class RoadmapVisual implements IVisual {
         this.renderGrid(timelineInner, totalDays, dayWidth, viewEnd);
         this.renderTodayLine(timelineInner, viewEnd, dayWidth);
 
-        // Store all rows for occlusion culling
-        this.allRows = rows;
-        this.renderedRowIds.clear();
-
         // Calculate which rows are visible (occlusion culling)
         const shouldCull = rows.length >= OCCLUSION.ENABLE_THRESHOLD && !this.settings.pdfMode;
         const visibleRowBounds = shouldCull
             ? this.coordinateEngine!.calculateVisibleRows(
                 rows.map(r => ({ y: r.y, height: r.height })),
                 this.currentScrollTop,
-                height - 100, // Approximate viewport height (minus header)
+                height - LAYOUT.VIEWPORT_HEADER_MARGIN,
                 rows.length
             )
             : rows.map((_, i) => ({ index: i, y: rows[i].y, height: rows[i].height, isVisible: true }));
@@ -531,7 +518,6 @@ export class RoadmapVisual implements IVisual {
                 this.renderTimelineRow(timelineInner, row, dayWidth);
                 if (row.data) {
                     this.rowPositions.set(row.data.id, { y: row.y, height: row.height });
-                    this.renderedRowIds.add(row.data.id);
                 }
             }
         });
@@ -555,20 +541,15 @@ export class RoadmapVisual implements IVisual {
             const timelineBodyNode = timelineBody.node();
             const timelineHeaderWrapperNode = timelineHeaderWrapper.node();
             if (leftBodyNode && timelineBodyNode && timelineHeaderWrapperNode) {
-                // Track scroll position for occlusion culling
-                const updateScrollPosition = () => {
-                    this.currentScrollTop = timelineBodyNode.scrollTop;
-                    this.currentScrollLeft = timelineBodyNode.scrollLeft;
-                };
-
+                // Sync scroll between panels
                 leftBody.on("scroll", () => {
                     timelineBodyNode.scrollTop = leftBodyNode.scrollTop;
-                    updateScrollPosition();
+                    this.currentScrollTop = timelineBodyNode.scrollTop;
                 });
                 timelineBody.on("scroll", () => {
                     leftBodyNode.scrollTop = timelineBodyNode.scrollTop;
                     timelineHeaderWrapperNode.scrollLeft = timelineBodyNode.scrollLeft;
-                    updateScrollPosition();
+                    this.currentScrollTop = timelineBodyNode.scrollTop;
                 });
 
                 // Drag-to-pan functionality
@@ -614,12 +595,6 @@ export class RoadmapVisual implements IVisual {
                 }
             }
         }
-    }
-
-    private calculateDayWidth(): number {
-        // Use constants from imported DAY_WIDTHS
-        const baseWidth = DAY_WIDTHS[this.settings.timeScale as TimeScale] || DAY_WIDTHS.monthly;
-        return baseWidth * this.settings.zoomLevel;
     }
 
     private getRowHeight(type: string): number {
@@ -998,12 +973,12 @@ export class RoadmapVisual implements IVisual {
             }
             current = DateService.addDays(current, 1);
         }
-        if (dayWidth >= 20) {
+        if (dayWidth >= LAYOUT.MIN_DAY_WIDTH_FOR_DAY_LABELS) {
             current = new Date(this.viewStart);
             let i = 0;
             while (current <= viewEnd) {
                 const x = i * dayWidth;
-                container.append("div").classed("day-cell", true).style("left", `${x}px`).style("width", `${dayWidth}px`).style("top", "28px").text(current.getDate().toString());
+                container.append("div").classed("day-cell", true).style("left", `${x}px`).style("width", `${dayWidth}px`).style("top", `${LAYOUT.HEADER_ROW_HEIGHT}px`).text(current.getDate().toString());
                 current = DateService.addDays(current, 1);
                 i++;
             }
@@ -1027,7 +1002,7 @@ export class RoadmapVisual implements IVisual {
             const weekEnd = DateService.addDays(current, 6);
             const effectiveEnd = weekEnd > viewEnd ? viewEnd : weekEnd;
             const width = DateService.daysBetween(current, effectiveEnd) * dayWidth + dayWidth;
-            container.append("div").classed("week-cell", true).style("left", `${x}px`).style("width", `${width}px`).style("top", "28px").text(`W${DateService.getWeekNumber(current)}`);
+            container.append("div").classed("week-cell", true).style("left", `${x}px`).style("width", `${width}px`).style("top", `${LAYOUT.HEADER_ROW_HEIGHT}px`).text(`W${DateService.getWeekNumber(current)}`);
             current = DateService.addDays(current, 7);
         }
     }
@@ -1068,7 +1043,7 @@ export class RoadmapVisual implements IVisual {
                 const quarterEnd = DateService.getQuarterEnd(current.getFullYear(), quarter);
                 const effectiveEnd = quarterEnd > viewEnd ? viewEnd : quarterEnd;
                 const width = DateService.daysBetween(current, effectiveEnd) * dayWidth + dayWidth;
-                container.append("div").classed("quarter-cell", true).style("left", `${x}px`).style("width", `${width}px`).style("top", "28px").text(`Q${quarter}`);
+                container.append("div").classed("quarter-cell", true).style("left", `${x}px`).style("width", `${width}px`).style("top", `${LAYOUT.HEADER_ROW_HEIGHT}px`).text(`Q${quarter}`);
             }
             current = DateService.addDays(current, 1);
         }
@@ -1296,8 +1271,6 @@ export class RoadmapVisual implements IVisual {
         this.workItems = [];
         this.collapsed.clear();
         this.rowPositions.clear();
-        this.allRows = [];
-        this.renderedRowIds.clear();
         this.coordinateEngine = null;
     }
 }

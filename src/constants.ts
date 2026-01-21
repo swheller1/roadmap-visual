@@ -31,6 +31,15 @@ export const LAYOUT = {
 
     /** Margin around milestone labels */
     MILESTONE_LABEL_MARGIN: 6,
+
+    /** Height of the timeline header row (for secondary row positioning) */
+    HEADER_ROW_HEIGHT: 28,
+
+    /** Minimum day width (px) before showing individual day labels */
+    MIN_DAY_WIDTH_FOR_DAY_LABELS: 20,
+
+    /** Approximate header height for viewport calculations */
+    VIEWPORT_HEADER_MARGIN: 100,
 } as const;
 
 // Logo size presets (in pixels)
